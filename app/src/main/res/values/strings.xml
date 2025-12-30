@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">P2PStadium</string>
+    <string name="start_button">Iniciar</string>
+    <string name="select_network">Selecciona una xarxa</string>
+    <string name="status">Estat: esperant…</string>
+</resources>
