@@ -29,6 +29,16 @@
 
     </RadioGroup>
 
+    <EditText
+        android:id="@+id/usernameInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nom d'usuari"
+        android:inputType="text"
+        android:visibility="gone"
+        android:layout_marginTop="8dp"
+        android:layout_marginHorizontal="16dp" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
