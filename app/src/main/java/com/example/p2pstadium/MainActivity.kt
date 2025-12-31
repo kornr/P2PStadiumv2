@@ -29,7 +29,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private lateinit var p2pManager: P2PManager
     private lateinit var radioAp: RadioButton
     private lateinit var radioClient: RadioButton
-    private lateinit var usernameInput: EditText // ✅ Nou camp
+    private lateinit var usernameInput: EditText // ✅ Casella per al nom d'usuari
+    private lateinit var saveUsernameButton: Button // ✅ Botó per guardar el nom
 
     private var peers = mutableListOf<WifiP2pDevice>()
     private val peerAdapter: ArrayAdapter<WifiP2pDevice> by lazy {
@@ -59,6 +60,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         messageLog = findViewById(R.id.messageLog)
         clientList = findViewById(R.id.clientList)
         usernameInput = findViewById(R.id.usernameInput) // ✅
+        saveUsernameButton = findViewById(R.id.saveUsernameButton) // ✅
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -74,33 +76,80 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             if (username == "Anònim") {
                 // Mostrem el camp directament a la UI
                 usernameInput.visibility = View.VISIBLE
+                saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.setText("")
                 usernameInput.setOnEditorActionListener { _, actionId, _ ->
-                    handleUsernameInput(actionId)
+                    if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        saveUsername()
+                        true
+                    } else {
+                        false
+                    }
                 }
             } else {
                 initP2P()
             }
         }
-    }
 
-    private fun handleUsernameInput(actionId: Int): Boolean {
-        if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
-            val name = usernameInput.text.toString().trim()
-            if (name.isNotEmpty()) {
-                username = name
-                getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE).edit()
-                    .putString("username", username)
-                    .putBoolean("terms_accepted", true)
-                    .apply()
-                usernameInput.visibility = View.GONE
-                initP2P()
-                return true
-            } else {
-                Toast.makeText(this, "El nom no pot estar buit", Toast.LENGTH_SHORT).show()
+        // Gestió de canvis de mode
+        radioAp.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Si es selecciona AP, podem mostrar un nom predefinit o editable
+                usernameInput.visibility = View.VISIBLE
+                saveUsernameButton.visibility = View.VISIBLE
+                usernameInput.hint = "Nom per AP (ex: AP_Joan)"
+                usernameInput.setText(username.takeIf { it != "Anònim" } ?: "")
+                usernameInput.requestFocus()
+                usernameInput.setOnEditorActionListener { _, actionId, _ ->
+                    if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        saveUsername()
+                        true
+                    } else {
+                        false
+                    }
+                }
             }
         }
-        return false
+
+        radioClient.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Si es selecciona Client, mostrem el camp per introduir el nom
+                usernameInput.visibility = View.VISIBLE
+                saveUsernameButton.visibility = View.VISIBLE
+                usernameInput.hint = "Nom d'usuari"
+                usernameInput.setText(username.takeIf { it != "Anònim" } ?: "")
+                usernameInput.requestFocus()
+                usernameInput.setOnEditorActionListener { _, actionId, _ ->
+                    if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        saveUsername()
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+        }
+
+        // Configura el listener del botó "Guardar"
+        saveUsernameButton.setOnClickListener {
+            saveUsername()
+        }
+    }
+
+    private fun saveUsername() {
+        val name = usernameInput.text.toString().trim()
+        if (name.isNotEmpty()) {
+            username = name
+            getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE).edit()
+                .putString("username", username)
+                .putBoolean("terms_accepted", true)
+                .apply()
+            usernameInput.visibility = View.GONE
+            saveUsernameButton.visibility = View.GONE
+            initP2P()
+        } else {
+            Toast.makeText(this, "El nom no pot estar buit", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showTermsDialog() {
@@ -120,70 +169,81 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 "No utilitzeu aquesta aplicació en situacions crítiques o de perill.\n\n" +
                 "En acceptar aquest avís, declareu que enteneu i accepteu tots els termes i condicions."
 
+        val signatureView = SignatureView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                200
+            )
+        }
+
+        val textView = TextView(this).apply {
+            text = termsText
+            textSize = 14f
+            setTextIsSelectable(true)
+        }
+
+        val scrollView = ScrollView(this).apply {
+            addView(textView)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                400
+            )
+        }
+
+        val button = Button(this).apply {
+            text = "Acceptar i Signar"
+            setPadding(0, 16, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
         val dialogLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(16, 16, 16, 16)
-
-            val textView = TextView(context).apply {
-                text = termsText
-                textSize = 14f
-                setTextIsSelectable(true)
-            }
-
-            val scrollView = ScrollView(context).apply {
-                addView(textView)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    400
-                )
-            }
-
             addView(scrollView)
-
-            val signatureView = SignatureView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    200
-                )
-            }
-
             addView(signatureView)
-
-            var dialog: AlertDialog? = null
-            val button = Button(context).apply {
-                text = "Acceptar i Signar"
-                setPadding(0, 16, 0, 0)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                setOnClickListener {
-                    if (signatureView.isSigned) {
-                        acceptedTerms = true
-                        dialog?.dismiss()
-
-                        // ✅ Mostrem el camp d'usuari a la finestra principal
-                        usernameInput.visibility = View.VISIBLE
-                        usernameInput.setText("")
-                        usernameInput.requestFocus()
-                        usernameInput.setOnEditorActionListener { _, actionId, _ ->
-                            handleUsernameInput(actionId)
-                        }
-                    } else {
-                        Toast.makeText(context, "Cal signar per acceptar", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-
             addView(button)
         }
 
+        // ✅ Creem el diàleg abans de configurar el listener
         val dialog = AlertDialog.Builder(this)
             .setTitle("Termes i condicions")
             .setView(dialogLayout)
             .setCancelable(false)
             .create()
 
+        // ✅ Assignem el listener després de crear el diàleg
+        button.setOnClickListener {
+            if (signatureView.isSigned) {
+                acceptedTerms = true
+                getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE).edit()
+                    .putBoolean("terms_accepted", true)
+                    .apply()
+
+                // ✅ Tanca el diàleg
+                dialog.dismiss()
+
+                // ✅ Mostra la casella i el botó
+                usernameInput.visibility = View.VISIBLE
+                saveUsernameButton.visibility = View.VISIBLE
+                usernameInput.setText("")
+                usernameInput.requestFocus()
+                usernameInput.setOnEditorActionListener { _, actionId, _ ->
+                    if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_UNSPECIFIED) {
+                        saveUsername()
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Cal signar per acceptar", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // ✅ Finalment, mostrem el diàleg
         dialog.show()
     }
 

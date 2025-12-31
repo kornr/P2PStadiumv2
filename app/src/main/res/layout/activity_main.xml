@@ -3,22 +3,42 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="16dp">
 
+    <!-- Títol i mode -->
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Estat: Esperant..."
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/modeText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mode: No definit"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Botons AP / Client -->
     <RadioGroup
-        android:id="@+id/modeGroup"
+        android:id="@+id/radioGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="12dp">
+        android:layout_marginBottom="8dp">
 
         <RadioButton
             android:id="@+id/radioAp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="AP"
-            android:checked="true" />
+            android:text="AP" />
 
         <RadioButton
             android:id="@+id/radioClient"
@@ -29,115 +49,99 @@
 
     </RadioGroup>
 
-    <EditText
-        android:id="@+id/usernameInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Nom d'usuari"
-        android:inputType="text"
-        android:visibility="gone"
-        android:layout_marginTop="8dp"
-        android:layout_marginHorizontal="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="P2PStadium - Wi-Fi Direct"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="12dp" />
-
+    <!-- Casella per al nom d'usuari + botó Guardar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:layout_marginTop="8dp"
+        android:layout_marginHorizontal="16dp">
 
-        <TextView
-            android:id="@+id/modeText"
+        <EditText
+            android:id="@+id/usernameInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Mode: AP"
-            android:textStyle="bold" />
+            android:hint="Nom d'usuari"
+            android:inputType="text"
+            android:visibility="gone"
+            android:layout_weight="1" />
 
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="0dp"
+        <Button
+            android:id="@+id/saveUsernameButton"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="end"
-            android:text="Carregant..." />
+            android:text="Guardar"
+            android:layout_marginStart="8dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Clients connectats:"
-        android:textStyle="bold"
-        android:layout_marginTop="8dp" />
-
-    <ListView
-        android:id="@+id/clientList"
-        android:layout_width="match_parent"
-        android:layout_height="100dp"
-        android:layout_marginBottom="8dp" />
-
+    <!-- Llista de dispositius propers -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Dispositius propers:"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
 
     <ListView
         android:id="@+id/peerList"
         android:layout_width="match_parent"
         android:layout_height="100dp"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginTop="4dp" />
 
+    <!-- Missatge i botó d'enviar -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Missatges:"
-        android:textStyle="bold" />
+        android:text="Missatge:"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#f0f0f0"
-        android:padding="8dp">
-
-        <TextView
-            android:id="@+id/messageLog"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Els missatges apareixeran aquí..."
-            android:textSize="14sp" />
-
-    </ScrollView>
-
-    <LinearLayout
+    <EditText
+        android:id="@+id/messageInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="8dp">
+        android:hint="Escriu un missatge..."
+        android:layout_marginTop="4dp" />
 
-        <EditText
-            android:id="@+id/messageInput"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Escriu un missatge"
-            android:inputType="text" />
+    <Button
+        android:id="@+id/sendButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enviar"
+        android:layout_marginTop="8dp" />
 
-        <Button
-            android:id="@+id/sendButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Enviar" />
+    <!-- Registre de missatges -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Registre de missatges:"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
 
-    </LinearLayout>
+    <TextView
+        android:id="@+id/messageLog"
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:background="#F5F5F5"
+        android:padding="8dp"
+        android:scrollbars="vertical"
+        android:isScrollContainer="true"
+        android:layout_marginTop="4dp" />
+
+    <!-- Llista de clients connectats amb GPS -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Clients connectats amb GPS:"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
+
+    <ListView
+        android:id="@+id/clientList"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:layout_marginTop="4dp" />
 
 </LinearLayout>
