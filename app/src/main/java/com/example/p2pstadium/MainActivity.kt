@@ -1,6 +1,5 @@
 package com.example.p2pstadium
 
-import android.Manifest
 import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
@@ -16,7 +15,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import java.util.Random
 
 class MainActivity : AppCompatActivity(), P2PManager.Listener {
@@ -77,83 +75,87 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     private fun showTermsDialog() {
-        val termsText = "TERMES I CONDICIONS D'ÚS\n\n" +
-                "1. Aquesta aplicació utilitza Wi-Fi Direct per establir connexions directes entre dispositius.\n" +
-                "2. L'ús de l'aplicació és sota la vostra pròpia responsabilitat.\n" +
-                "3. El desenvolupador no es fa responsable de cap dany, pèrdua de dades o problema de xarxa.\n" +
-                "4. Els dispositius han d'estar propers per a una connexió efectiva.\n" +
-                "5. L'aplicació no garanteix la privadesa total de les dades compartides.\n" +
-                "6. L'usuari és responsable de les dades que comparteix a través de l'aplicació.\n" +
-                "7. Aquesta aplicació no és una eina mèdica ni de seguretat.\n" +
-                "8. En cas de problemes, contacteu amb el suport tècnic.\n" +
-                "9. El desenvolupador es reserva el dret de modificar aquest avís legal.\n" +
-                "10. L'ús continuat de l'aplicació implica l'acceptació de tots aquests termes.\n\n" +
-                "AVÍS IMPORTANT:\n" +
-                "Aquesta aplicació és per ús en entorns controlats i no substitueix les mesures de seguretat estàndard.\n" +
-                "No utilitzeu aquesta aplicació en situacions crítiques o de perill.\n\n" +
-                "En acceptar aquest avís, declareu que enteneu i accepteu tots els termes i condicions."
+    val termsText = "TERMES I CONDICIONS D'ÚS\n\n" +
+            "1. Aquesta aplicació utilitza Wi-Fi Direct per establir connexions directes entre dispositius.\n" +
+            "2. L'ús de l'aplicació és sota la vostra pròpia responsabilitat.\n" +
+            "3. El desenvolupador no es fa responsable de cap dany, pèrdua de dades o problema de xarxa.\n" +
+            "4. Els dispositius han d'estar propers per a una connexió efectiva.\n" +
+            "5. L'aplicació no garanteix la privadesa total de les dades compartides.\n" +
+            "6. L'usuari és responsable de les dades que comparteix a través de l'aplicació.\n" +
+            "7. Aquesta aplicació no és una eina mèdica ni de seguretat.\n" +
+            "8. En cas de problemes, contacteu amb el suport tècnic.\n" +
+            "9. El desenvolupador es reserva el dret de modificar aquest avís legal.\n" +
+            "10. L'ús continuat de l'aplicació implica l'acceptació de tots aquests termes.\n\n" +
+            "AVÍS IMPORTANT:\n" +
+            "Aquesta aplicació és per ús en entorns controlats i no substitueix les mesures de seguretat estàndard.\n" +
+            "No utilitzeu aquesta aplicació en situacions crítiques o de perill.\n\n" +
+            "En acceptar aquest avís, declareu que enteneu i accepteu tots els termes i condicions."
 
-        val dialogLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(16, 16, 16, 16)
+    // ✅ Declarem el layout fora
+    val dialogLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(16, 16, 16, 16)
 
-            val textView = TextView(context).apply {
-                text = termsText
-                textSize = 14f
-                setTextIsSelectable(true)
-            }
-
-            val scrollView = ScrollView(context).apply {
-                addView(textView)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    400
-                )
-            }
-
-            addView(scrollView)
-
-            val signatureView = SignatureView(context).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    200
-                )
-            }
-
-            addView(signatureView)
-
-            val button = Button(context).apply {
-                text = "Acceptar i Signar"
-                setPadding(0, 16, 0, 0)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                setOnClickListener {
-                    if (signatureView.isSigned) {
-                        acceptedTerms = true
-                        getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE).edit()
-                            .putBoolean("terms_accepted", true)
-                            .apply()
-                        dialog.dismiss()
-                        showUsernameDialog()
-                    } else {
-                        Toast.makeText(context, "Cal signar per acceptar", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-
-            addView(button)
+        val textView = TextView(context).apply {
+            text = termsText
+            textSize = 14f
+            setTextIsSelectable(true)
         }
 
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Termes i condicions")
-            .setView(dialogLayout)
-            .setCancelable(false)
-            .create()
+        val scrollView = ScrollView(context).apply {
+            addView(textView)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                400
+            )
+        }
 
-        dialog.show()
+        addView(scrollView)
+
+        val signatureView = SignatureView(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                200
+            )
+        }
+
+        addView(signatureView)
+
+        var dialog: AlertDialog? = null
+
+        val button = Button(context).apply {
+            text = "Acceptar i Signar"
+            setPadding(0, 16, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setOnClickListener {
+                if (signatureView.isSigned) {
+                    acceptedTerms = true
+                    getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE).edit()
+                        .putBoolean("terms_accepted", true)
+                        .apply()
+                    dialog?.dismiss()
+                    showUsernameDialog()
+                } else {
+                    Toast.makeText(context, "Cal signar per acceptar", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        addView(button)
     }
+
+    // ✅ Ara creem el diàleg amb el layout COM A VIEW
+    val dialog = AlertDialog.Builder(this)
+        .setTitle("Termes i condicions")
+        .setView(dialogLayout) // ✅ Correcte: dialogLayout és un LinearLayout (subclasse de View)
+        .setCancelable(false)
+        .create()
+
+    dialog.show()
+}
 
     private fun showUsernameDialog() {
         val editText = EditText(this)
