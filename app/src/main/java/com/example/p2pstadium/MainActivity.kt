@@ -44,6 +44,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
     private var username = "Anònim"
     private var acceptedTerms = false
+    private var apName = "AP Desconegut"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -304,21 +305,23 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
-        if (info.groupFormed) {
-            val isAp = info.isGroupOwner
-            val baseMode = if (isAp) "✅ AP (Grup Owner)" else "🔵 Client"
-            modeText.text = baseMode
+    if (info.groupFormed) {
+        val isAp = info.isGroupOwner
+        val baseMode = if (isAp) "✅ AP (Grup Owner)" else "🔵 Client"
+        modeText.text = baseMode
 
-            if (isAp) {
-                statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
-            } else {
-                statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
-                val myGps = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
-                p2pManager.sendMessage("CLIENT:$username:$myGps")
-            }
+        if (isAp) {
+            statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
+            apName = info.groupOwnerAddress.hostAddress // O usa el nom del dispositiu
+            startServer()
+        } else {
+            statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
+            apName = info.groupOwnerAddress.hostAddress // O usa el nom del dispositiu
+            val myGps = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
+            p2pManager.sendMessage("CLIENT:$username:$myGps")
         }
     }
-
+}
     override fun onPeerListUpdated(peers: List<WifiP2pDevice>) {
         this.peers.clear()
         this.peers.addAll(peers)
@@ -330,25 +333,31 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
-        val count = group?.clientList?.size ?: 0
+        val count = group?.clientList?.deviceList?.size ?: 0
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
+
+        // Mostra els clients connectats
+        clientData.clear()
+        group?.clientList?.deviceList?.forEach { device ->
+        clientData.add("${device.deviceName} (${device.deviceAddress})")
     }
+    clientListAdapter.notifyDataSetChanged()
+}
 
     override fun onMessageReceived(message: String) {
-        if (message.startsWith("CLIENT:")) {
-            val parts = message.split(":", limit = 3)
-            if (parts.size == 3) {
-                val name = parts[1]
-                val gps = parts[2]
-                clientData.add("$name → $gps")
-                clientListAdapter.notifyDataSetChanged()
-            }
-        } else {
-            appendMessage("Peer: $message")
+    if (message.startsWith("CLIENT:")) {
+        val parts = message.split(":", limit = 3)
+        if (parts.size == 3) {
+            val name = parts[1]
+            val gps = parts[2]
+            clientData.add("$name → $gps")
+            clientListAdapter.notifyDataSetChanged()
         }
+    } else {
+        appendMessage("Peer: $message")
     }
-
+}
     override fun onDestroy() {
         p2pManager.stop()
         super.onDestroy()
