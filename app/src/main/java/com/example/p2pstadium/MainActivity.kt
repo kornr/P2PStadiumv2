@@ -29,8 +29,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private lateinit var p2pManager: P2PManager
     private lateinit var radioAp: RadioButton
     private lateinit var radioClient: RadioButton
-    private lateinit var usernameInput: EditText // ✅ Casella per al nom d'usuari
-    private lateinit var saveUsernameButton: Button // ✅ Botó per guardar el nom
+    private lateinit var usernameInput: EditText
+    private lateinit var saveUsernameButton: Button
 
     private var peers = mutableListOf<WifiP2pDevice>()
     private val peerAdapter: ArrayAdapter<WifiP2pDevice> by lazy {
@@ -50,7 +50,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Inicialitzem vistes
         radioAp = findViewById(R.id.radioAp)
         radioClient = findViewById(R.id.radioClient)
         statusText = findViewById(R.id.statusText)
@@ -60,13 +59,12 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         sendButton = findViewById(R.id.sendButton)
         messageLog = findViewById(R.id.messageLog)
         clientList = findViewById(R.id.clientList)
-        usernameInput = findViewById(R.id.usernameInput) // ✅
-        saveUsernameButton = findViewById(R.id.saveUsernameButton) // ✅
+        usernameInput = findViewById(R.id.usernameInput)
+        saveUsernameButton = findViewById(R.id.saveUsernameButton)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
 
-        // Carreguem preferències
         val prefs = getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE)
         acceptedTerms = prefs.getBoolean("terms_accepted", false)
         username = prefs.getString("username", "Anònim") ?: "Anònim"
@@ -75,7 +73,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             showTermsDialog()
         } else {
             if (username == "Anònim") {
-                // Mostrem el camp directament a la UI
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.setText("")
@@ -92,10 +89,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             }
         }
 
-        // Gestió de canvis de mode
         radioAp.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                // Si es selecciona AP, podem mostrar un nom predefinit o editable
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.hint = "Nom per AP (ex: AP_Joan)"
@@ -114,7 +109,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
         radioClient.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                // Si es selecciona Client, mostrem el camp per introduir el nom
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.hint = "Nom d'usuari"
@@ -131,7 +125,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             }
         }
 
-        // Configura el listener del botó "Guardar"
         saveUsernameButton.setOnClickListener {
             saveUsername()
         }
@@ -208,14 +201,12 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             addView(button)
         }
 
-        // ✅ Creem el diàleg abans de configurar el listener
         val dialog = AlertDialog.Builder(this)
             .setTitle("Termes i condicions")
             .setView(dialogLayout)
             .setCancelable(false)
             .create()
 
-        // ✅ Assignem el listener després de crear el diàleg
         button.setOnClickListener {
             if (signatureView.isSigned) {
                 acceptedTerms = true
@@ -223,10 +214,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                     .putBoolean("terms_accepted", true)
                     .apply()
 
-                // ✅ Tanca el diàleg
                 dialog.dismiss()
 
-                // ✅ Mostra la casella i el botó
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.setText("")
@@ -244,7 +233,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             }
         }
 
-        // ✅ Finalment, mostrem el diàleg
         dialog.show()
     }
 
@@ -305,23 +293,24 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
-    if (info.groupFormed) {
-        val isAp = info.isGroupOwner
-        val baseMode = if (isAp) "✅ AP (Grup Owner)" else "🔵 Client"
-        modeText.text = baseMode
+        if (info.groupFormed) {
+            val isAp = info.isGroupOwner
+            val baseMode = if (isAp) "✅ AP (Grup Owner)" else "🔵 Client"
+            modeText.text = baseMode
 
-        if (isAp) {
-            statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
-            apName = info.groupOwnerAddress.hostAddress // O usa el nom del dispositiu
-            startServer()
-        } else {
-            statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
-            apName = info.groupOwnerAddress.hostAddress // O usa el nom del dispositiu
-            val myGps = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
-            p2pManager.sendMessage("CLIENT:$username:$myGps")
+            if (isAp) {
+                statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
+                apName = info.groupOwnerAddress.hostAddress
+                p2pManager.startServer() // ✅ Utilitza el manager
+            } else {
+                statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
+                apName = info.groupOwnerAddress.hostAddress
+                val myGps = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
+                p2pManager.sendMessage("CLIENT:$username:$myGps")
+            }
         }
     }
-}
+
     override fun onPeerListUpdated(peers: List<WifiP2pDevice>) {
         this.peers.clear()
         this.peers.addAll(peers)
@@ -337,27 +326,27 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
 
-        // Mostra els clients connectats
         clientData.clear()
         group?.clientList?.deviceList?.forEach { device ->
-        clientData.add("${device.deviceName} (${device.deviceAddress})")
+            clientData.add("${device.deviceName} (${device.deviceAddress})")
+        }
+        clientListAdapter.notifyDataSetChanged()
     }
-    clientListAdapter.notifyDataSetChanged()
-}
 
     override fun onMessageReceived(message: String) {
-    if (message.startsWith("CLIENT:")) {
-        val parts = message.split(":", limit = 3)
-        if (parts.size == 3) {
-            val name = parts[1]
-            val gps = parts[2]
-            clientData.add("$name → $gps")
-            clientListAdapter.notifyDataSetChanged()
+        if (message.startsWith("CLIENT:")) {
+            val parts = message.split(":", limit = 3)
+            if (parts.size == 3) {
+                val name = parts[1]
+                val gps = parts[2]
+                clientData.add("$name → $gps")
+                clientListAdapter.notifyDataSetChanged()
+            }
+        } else {
+            appendMessage("Peer: $message")
         }
-    } else {
-        appendMessage("Peer: $message")
     }
-}
+
     override fun onDestroy() {
         p2pManager.stop()
         super.onDestroy()
