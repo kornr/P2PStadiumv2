@@ -1,0 +1,17 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# SDK i configuració local
+local.properties
+android-sdk/
+
+# IDE
+*.iml
+.idea/
+*.code-workspace
+
+# Sistema
+.DS_Store
+Thumbs.db
