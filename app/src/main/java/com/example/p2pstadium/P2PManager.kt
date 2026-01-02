@@ -207,7 +207,7 @@ class P2PManager(
         listener.onGroupInfoAvailable(group)
         
         // Notifica els canvis en els clients connectats
-        group?.clientList?.deviceList?.forEach { device ->
+        group?.clientList?.forEach { device ->
             listener.onDeviceStatusChanged(device, "Connectat")
         }
     }
