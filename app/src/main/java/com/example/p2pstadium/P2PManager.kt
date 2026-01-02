@@ -36,6 +36,7 @@ class P2PManager(
         fun onGroupInfoAvailable(group: WifiP2pGroup?)
         fun onMessageReceived(message: String)
         fun onDeviceDiscovered(device: WifiP2pDevice, username: String)
+        fun onDeviceStatusChanged(device: WifiP2pDevice, status: String)
     }
 
     private val manager: WifiP2pManager = context.getSystemService(Context.WIFI_P2P_SERVICE) as WifiP2pManager
@@ -182,7 +183,7 @@ class P2PManager(
             if (info.isGroupOwner) {
                 listener.onP2PStatusChanged("🔥 AP actiu. IP: ${info.groupOwnerAddress}")
                 startServer()
-                sendDeviceInfo() // Envia informació del dispositiu
+                sendDeviceInfo()
             } else {
                 listener.onP2PStatusChanged("🔗 Client connectat")
                 connectAsClient(info.groupOwnerAddress.hostAddress)
@@ -193,17 +194,21 @@ class P2PManager(
     override fun onPeersAvailable(peers: WifiP2pDeviceList) {
         val deviceList = peers.deviceList.toList()
         
+        // Notifica els dispositius disponibles
+        listener.onPeerListUpdated(deviceList)
+        
         // Per cada dispositiu, enviem una sol·licitud d'informació
         for (device in deviceList) {
-            // En una implementació real, aquí enviaríem una sol·licitud d'informació
-            // Per ara, simplement afegim el dispositiu amb un nom temporal
             listener.onDeviceDiscovered(device, "Desconegut")
         }
-        
-        listener.onPeerListUpdated(deviceList)
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
         listener.onGroupInfoAvailable(group)
+        
+        // Notifica els canvis en els clients connectats
+        group?.clientList?.deviceList?.forEach { device ->
+            listener.onDeviceStatusChanged(device, "Connectat")
+        }
     }
 }

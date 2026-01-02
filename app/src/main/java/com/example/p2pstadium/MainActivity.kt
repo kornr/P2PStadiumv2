@@ -55,6 +55,16 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private val MAX_CLIENTS_PER_AP = 4
     private var isTorre1 = false
     private val deviceUsernames = mutableMapOf<String, String>()
+    private var deviceStatus = mutableMapOf<String, String>()
+
+    // Per actualitzar la llista periòdicament
+    private var refreshHandler = Handler(Looper.getMainLooper())
+    private val refreshRunnable = object : Runnable {
+        override fun run() {
+            updateDeviceList()
+            refreshHandler.postDelayed(this, 2000) // Actualitza cada 2 segons
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -147,6 +157,18 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         restartButton.setOnClickListener {
             showPasswordDialog()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Inicia l'actualització periòdica
+        refreshHandler.post(refreshRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Atura l'actualització periòdica
+        refreshHandler.removeCallbacks(refreshRunnable)
     }
 
     private fun showPasswordDialog() {
@@ -373,7 +395,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
                 p2pManager.startServer()
-                p2pManager.sendDeviceInfo() // Envia informació del dispositiu
+                p2pManager.sendDeviceInfo()
             } else {
                 statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
@@ -411,15 +433,26 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         clientData.clear()
         group?.clientList?.forEach { device ->
             val deviceName = deviceUsernames[device.deviceAddress] ?: device.deviceName
-            clientData.add("$deviceName (${device.deviceAddress})")
+            val status = deviceStatus[device.deviceAddress] ?: "Desconegut"
+            clientData.add("$deviceName ($status)")
         }
         clientListAdapter.notifyDataSetChanged()
     }
 
     override fun onDeviceDiscovered(device: WifiP2pDevice, username: String) {
         deviceUsernames[device.deviceAddress] = username
-        // Actualitza la llista de dispositius propers
+        deviceStatus[device.deviceAddress] = "Disponible"
+        updateDeviceList()
+    }
+
+    override fun onDeviceStatusChanged(device: WifiP2pDevice, status: String) {
+        deviceStatus[device.deviceAddress] = status
+        updateDeviceList()
+    }
+
+    private fun updateDeviceList() {
         peerAdapter.notifyDataSetChanged()
+        clientListAdapter.notifyDataSetChanged()
     }
 
     private fun findTorre1Device(): WifiP2pDevice? {
@@ -461,7 +494,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             // En una implementació real, això s'hauria de fer amb la informació de la connexió
             // Per ara, simplement actualitzem el nom d'usuari del dispositiu
             // Això requereix més lògica per a associar el nom d'usuari amb el dispositiu
-            // En aquesta implementació simplificada, suposem que el primer dispositiu és "torre1"
         } else {
             appendMessage("Peer: $message")
         }
