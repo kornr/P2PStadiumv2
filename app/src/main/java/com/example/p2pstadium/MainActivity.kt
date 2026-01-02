@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private var currentApCount = 0
     private val MAX_CLIENTS_PER_AP = 4
     private var isTorre1 = false
+    private val deviceUsernames = mutableMapOf<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -280,7 +281,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
     private fun initP2P() {
         startConnectionTimer(30000) // 30 segons de temps per a la primera connexió
-        p2pManager = P2PManager(this, this)
+        p2pManager = P2PManager(this, this, username)
 
         val prefs = getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE)
         val lastMode = prefs.getString("mode", "ap") ?: "ap"
@@ -408,23 +409,26 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
         clientData.clear()
         group?.clientList?.forEach { device ->
-            clientData.add("${device.deviceName} (${device.deviceAddress})")
+            val deviceName = deviceUsernames[device.deviceAddress] ?: device.deviceName
+            clientData.add("$deviceName (${device.deviceAddress})")
         }
         clientListAdapter.notifyDataSetChanged()
     }
 
+    override fun onDeviceDiscovered(device: WifiP2pDevice, username: String) {
+        deviceUsernames[device.deviceAddress] = username
+        // Actualitza la llista de dispositius propers
+        peerAdapter.notifyDataSetChanged()
+    }
+
     private fun findTorre1Device(): WifiP2pDevice? {
-        // En una implementació real, això s'hauria de fer amb la informació rebuda dels dispositius
         return peers.firstOrNull { device ->
-            // Aquí hauríem de tenir una manera de saber el nom d'usuari del dispositiu
-            // En aquesta implementació simplificada, suposem que el primer dispositiu és "torre1"
-            false
+            deviceUsernames[device.deviceAddress] == "torre1"
         }
     }
 
     private fun isConnectedToTorre1(): Boolean {
-        // En una implementació real, això s'hauria de fer amb la informació de la connexió
-        return false
+        return deviceUsernames.containsValue("torre1")
     }
 
     private fun startNewApSelection() {
@@ -451,6 +455,11 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 clientData.add("$name → $gps")
                 clientListAdapter.notifyDataSetChanged()
             }
+        } else if (message.startsWith("DEVICE_INFO:")) {
+            val username = message.substringAfter("DEVICE_INFO:")
+            // En una implementació real, aquí hauríem de tenir una manera de saber quin dispositiu és
+            // Per ara, simplement actualitzem el nom d'usuari del dispositiu
+            // Això requereix més lògica per a associar el nom d'usuari amb el dispositiu
         } else {
             appendMessage("Peer: $message")
         }
