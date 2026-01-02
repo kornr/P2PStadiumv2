@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.net.wifi.WifiManager
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
@@ -43,8 +42,8 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private lateinit var subnetMask: EditText
     private lateinit var ssid: EditText
 
-    private var peers = mutableListOf<DeviceInfo>()
-    private val peerAdapter: ArrayAdapter<DeviceInfo> by lazy {
+    private var peers = mutableListOf<NetworkManager.DeviceInfo>()
+    private val peerAdapter: ArrayAdapter<NetworkManager.DeviceInfo> by lazy {
         ArrayAdapter(this, android.R.layout.simple_list_item_1, peers)
     }
 
@@ -434,7 +433,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         addLogMessage("Estat de xarxa: $status")
     }
 
-    override fun onConnectionInfoAvailable(info: NetworkInfo) {
+    override fun onConnectionInfoAvailable(info: NetworkManager.NetworkInfo) {
         if (info.groupFormed) {
             val isAp = info.isGroupOwner
             val baseMode = if (isAp) "✅ AP (Grup Owner)" else "🔵 Client"
@@ -458,7 +457,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         updateRefreshButtonVisibility()
     }
 
-    override fun onPeerListUpdated(peers: List<DeviceInfo>) {
+    override fun onPeerListUpdated(peers: List<NetworkManager.DeviceInfo>) {
         this.peers.clear()
         this.peers.addAll(peers)
         peerAdapter.notifyDataSetChanged()
@@ -475,7 +474,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         updateRefreshButtonVisibility()
     }
 
-    override fun onGroupInfoAvailable(group: NetworkGroup?) {
+    override fun onGroupInfoAvailable(group: NetworkManager.NetworkGroup?) {
         val count = group?.clientList?.size ?: 0
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
@@ -498,14 +497,14 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         updateRefreshButtonVisibility()
     }
 
-    override fun onDeviceDiscovered(device: DeviceInfo, username: String) {
+    override fun onDeviceDiscovered(device: NetworkManager.DeviceInfo, username: String) {
         deviceUsernames[device.deviceAddress] = username
         deviceStatus[device.deviceAddress] = "Disponible"
         updateDeviceList()
         addLogMessage("Dispositiu descobert: ${device.deviceName} (nom d'usuari: $username)")
     }
 
-    override fun onDeviceStatusChanged(device: DeviceInfo, status: String) {
+    override fun onDeviceStatusChanged(device: NetworkManager.DeviceInfo, status: String) {
         deviceStatus[device.deviceAddress] = status
         updateDeviceList()
         addLogMessage("Estat del dispositiu actualitzat: ${device.deviceName} - $status")
@@ -516,7 +515,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         clientListAdapter.notifyDataSetChanged()
     }
 
-    private fun findTorre1Device(): DeviceInfo? {
+    private fun findTorre1Device(): NetworkManager.DeviceInfo? {
         return peers.firstOrNull { device ->
             deviceUsernames[device.deviceAddress] == "torre1"
         }
