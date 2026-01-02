@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private lateinit var topologyButton: Button
     private lateinit var topologyView: TextView
     private lateinit var deployButton: Button
+    private lateinit var networkConfigLayout: LinearLayout
 
     private var peers = mutableListOf<NetworkManager.DeviceInfo>()
     private val peerAdapter: ArrayAdapter<NetworkManager.DeviceInfo> by lazy {
@@ -121,6 +122,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         topologyButton = findViewById(R.id.topologyButton)
         topologyView = findViewById(R.id.topologyView)
         deployButton = findViewById(R.id.deployButton)
+        networkConfigLayout = findViewById(R.id.networkConfigLayout)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -158,6 +160,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         // Configura els listeners dels botons de mode
         radioAp.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
+                networkConfigLayout.visibility = View.VISIBLE
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.hint = "Nom per AP (ex: torre1)"
@@ -177,6 +180,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
 
         radioClient.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
+                networkConfigLayout.visibility = View.GONE
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
                 usernameInput.hint = "Nom d'usuari"
