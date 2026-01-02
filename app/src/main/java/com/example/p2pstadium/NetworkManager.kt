@@ -58,9 +58,11 @@ class NetworkManager(
     private var networkPassword = "password"
     private var ipAddress = "192.168.4.1"
     private var subnetMask = "255.255.255.0"
+    private var isAp = false
 
     fun startClient() {
         listener.onNetworkStatusChanged("Iniciant mode Client...")
+        isAp = false
         // En una implementació real, aquí buscaríem xarxes amb el SSID específic
         listener.onNetworkStatusChanged("Mode Client actiu")
         discoverPeers()
@@ -70,6 +72,7 @@ class NetworkManager(
         this.ipAddress = ipAddress
         this.subnetMask = subnetMask
         this.networkSsid = ssid
+        isAp = true
         
         listener.onNetworkStatusChanged("Creant xarxa amb SSID: $ssid")
         
@@ -189,14 +192,26 @@ class NetworkManager(
                 val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
+                    // Processa el missatge i reenvia a tots els clients si som AP
                     Handler(Looper.getMainLooper()).post {
                         listener.onMessageReceived(line!!)
+                    }
+                    
+                    // Si som AP, reenvia el missatge a tots els altres clients
+                    if (isAp && line != null) {
+                        retransmitMessage(line)
                     }
                 }
             } catch (e: Exception) {
                 Log.e("NetworkManager", "Error llegint missatge", e)
             }
         }.start()
+    }
+
+    private fun retransmitMessage(message: String) {
+        // En una implementació real, aquí enviaríem el missatge a tots els clients connectats
+        // Aquesta és una implementació simplificada
+        Log.d("NetworkManager", "Retransmetent missatge: $message")
     }
 
     fun sendMessage(message: String) {
@@ -212,5 +227,15 @@ class NetworkManager(
     fun sendDeviceInfo() {
         val deviceInfo = "DEVICE_INFO:$username"
         sendMessage(deviceInfo)
+    }
+
+    // Aquestes dues funcions eren les que faltaven
+    fun sendPosition(position: String) {
+        val positionInfo = "POSITION:$username:$position"
+        sendMessage(positionInfo)
+    }
+
+    fun broadcastMessage(message: String) {
+        sendMessage(message)
     }
 }
