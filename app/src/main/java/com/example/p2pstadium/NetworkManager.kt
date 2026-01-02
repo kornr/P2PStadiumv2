@@ -192,14 +192,18 @@ class NetworkManager(
                 val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
-                    // Processa el missatge i reenvia a tots els clients si som AP
-                    Handler(Looper.getMainLooper()).post {
-                        listener.onMessageReceived(line!!)
-                    }
-                    
-                    // Si som AP, reenvia el missatge a tots els altres clients
-                    if (isAp && line != null) {
-                        retransmitMessage(line)
+                    // Creem una còpia local no mutable de la línia
+                    val currentLine = line
+                    if (currentLine != null) {
+                        // Processa el missatge i reenvia a tots els clients si som AP
+                        Handler(Looper.getMainLooper()).post {
+                            listener.onMessageReceived(currentLine)
+                        }
+                        
+                        // Si som AP, reenvia el missatge a tots els altres clients
+                        if (isAp) {
+                            retransmitMessage(currentLine)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -229,7 +233,6 @@ class NetworkManager(
         sendMessage(deviceInfo)
     }
 
-    // Aquestes dues funcions eren les que faltaven
     fun sendPosition(position: String) {
         val positionInfo = "POSITION:$username:$position"
         sendMessage(positionInfo)
