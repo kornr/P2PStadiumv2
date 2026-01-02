@@ -147,7 +147,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     private fun showPasswordDialog() {
-        // Correcció: Declarem la view abans de crear el dialog
         val passwordInput = EditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
         }
@@ -286,9 +285,11 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         if (lastMode == "client") {
             radioClient.isChecked = true
             modeText.text = "Mode: Client"
+            p2pManager.start()
         } else {
             radioAp.isChecked = true
             modeText.text = "Mode: AP"
+            p2pManager.createGroup()
         }
 
         radioAp.setOnCheckedChangeListener { _, isChecked ->
