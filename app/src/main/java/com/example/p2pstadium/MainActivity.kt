@@ -10,6 +10,7 @@ import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pGroup
 import android.net.wifi.p2p.WifiP2pInfo
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -31,6 +32,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private lateinit var radioClient: RadioButton
     private lateinit var usernameInput: EditText
     private lateinit var saveUsernameButton: Button
+    private lateinit var timerText: TextView
+    private lateinit var restartButton: Button
 
     private var peers = mutableListOf<WifiP2pDevice>()
     private val peerAdapter: ArrayAdapter<WifiP2pDevice> by lazy {
@@ -45,11 +48,15 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private var username = "Anònim"
     private var acceptedTerms = false
     private var apName = "AP Desconegut"
+    private var connectionTimer: CountDownTimer? = null
+    private var currentApCount = 0
+    private val MAX_CLIENTS_PER_AP = 4
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Inicialitzem totes les vistes
         radioAp = findViewById(R.id.radioAp)
         radioClient = findViewById(R.id.radioClient)
         statusText = findViewById(R.id.statusText)
@@ -61,6 +68,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         clientList = findViewById(R.id.clientList)
         usernameInput = findViewById(R.id.usernameInput)
         saveUsernameButton = findViewById(R.id.saveUsernameButton)
+        timerText = findViewById(R.id.timerText)
+        restartButton = findViewById(R.id.restartButton)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -89,6 +98,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             }
         }
 
+        // Configura els listeners dels botons de mode
         radioAp.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 usernameInput.visibility = View.VISIBLE
@@ -128,6 +138,30 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         saveUsernameButton.setOnClickListener {
             saveUsername()
         }
+
+        restartButton.setOnClickListener {
+            showPasswordDialog()
+        }
+    }
+
+    private fun showPasswordDialog() {
+        val passwordDialog = AlertDialog.Builder(this)
+            .setTitle("Reiniciar xarxa")
+            .setMessage("Introdueix la contrasenya:")
+            .setView(EditText(this).apply {
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+            })
+            .setPositiveButton("Acceptar") { _, _ ->
+                val password = (passwordDialog.view as EditText).text.toString()
+                if (password == "torre1") {
+                    restartP2PProcess()
+                } else {
+                    Toast.makeText(this, "Contrasenya incorrecta", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel·lar", null)
+            .create()
+        passwordDialog.show()
     }
 
     private fun saveUsername() {
@@ -237,6 +271,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     private fun initP2P() {
+        startConnectionTimer(30000) // 30 segons de temps per a la primera connexió
         p2pManager = P2PManager(this, this)
 
         val prefs = getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE)
@@ -283,6 +318,31 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         }
     }
 
+    private fun startConnectionTimer(duration: Long) {
+        connectionTimer?.cancel()
+        connectionTimer = object : CountDownTimer(duration, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val seconds = millisUntilFinished / 1000
+                timerText.text = "Temps restant: $seconds s"
+            }
+
+            override fun onFinish() {
+                timerText.text = "Temps esgotat! Reiniciant..."
+                restartP2PProcess()
+            }
+        }.start()
+    }
+
+    private fun restartP2PProcess() {
+        p2pManager.stop()
+        currentApCount = 0
+        clientData.clear()
+        clientListAdapter.notifyDataSetChanged()
+        modeText.text = "Mode: No definit"
+        statusText.text = "Estat: Reiniciant..."
+        initP2P()
+    }
+
     private fun appendMessage(msg: String) {
         messageLog.append("\n$msg")
         messageLog.post { messageLog.scrollTo(0, messageLog.bottom) }
@@ -326,11 +386,32 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
 
+        // Comprova si s'ha arribat al límit de clients
+        if (count >= MAX_CLIENTS_PER_AP && radioAp.isChecked) {
+            timerText.text = "Cercant nou AP per expansió..."
+            startNewApSelection()
+        }
+
         clientData.clear()
         group?.clientList?.forEach { device ->
             clientData.add("${device.deviceName} (${device.deviceAddress})")
         }
         clientListAdapter.notifyDataSetChanged()
+    }
+
+    private fun startNewApSelection() {
+        // En una implementació real, aquí s'enviaria un missatge als clients per obtenir les seves coordenades GPS
+        // i es triaria el client amb les coordenades més allunyades per ser el nou AP
+
+        // Simulació: després de 10 segons, es canvia el mode a AP
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (radioClient.isChecked) {
+                radioAp.isChecked = true
+                modeText.text = "Mode: AP (expansió)"
+                currentApCount++
+                Toast.makeText(this, "Nou AP seleccionat! (Simulació)", Toast.LENGTH_SHORT).show()
+            }
+        }, 10000)
     }
 
     override fun onMessageReceived(message: String) {
@@ -348,6 +429,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onDestroy() {
+        connectionTimer?.cancel()
         p2pManager.stop()
         super.onDestroy()
     }
