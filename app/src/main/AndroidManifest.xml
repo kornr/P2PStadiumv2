@@ -9,10 +9,6 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- Permisos per a configuració de xarxa -->
-    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-
     <!-- Declara la versió mínima d'Android -->
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
 

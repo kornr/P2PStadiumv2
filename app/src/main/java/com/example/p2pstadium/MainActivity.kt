@@ -6,13 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
-import android.net.wifi.WifiManager.LocalOnlyHotspotCallback
-import android.net.wifi.WifiManager.LocalOnlyHotspotReservation
-import android.net.wifi.WifiManager.WifiLock
-import android.net.wifi.WifiManager.WifiStateListener
-import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
@@ -22,7 +16,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.*
-import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import java.util.Random
 
