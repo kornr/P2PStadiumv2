@@ -543,13 +543,6 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             canvas.drawPath(path, paint)
         }
 
-        refreshButton.setOnClickListener {
-        if (radioAp.isChecked) {
-            statusText.text = "Cercant dispositius propers..."
-            p2pManager.discoverPeers() // Ara és accessible
-    }
-}
-
         override fun onTouchEvent(event: MotionEvent): Boolean {
             val x = event.x
             val y = event.y

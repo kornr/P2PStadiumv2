@@ -69,11 +69,6 @@ class P2PManager(
         }
     }
 
-// Canvia aquesta línia
-    fun discoverPeers() {
-        manager.discoverPeers(channel, null)
-}
-
     fun start() {
         context.registerReceiver(broadcastReceiver, IntentFilter().apply {
             addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION)
@@ -96,7 +91,7 @@ class P2PManager(
         }
     }
 
-    private fun discoverPeers() {
+    fun discoverPeers() {
         manager.discoverPeers(channel, null)
     }
 
