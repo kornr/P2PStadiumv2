@@ -15,6 +15,9 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.*
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
+import java.security.MessageDigest
 
 class NetworkManager(
     private val context: Context,
@@ -59,11 +62,11 @@ class NetworkManager(
     private var ipAddress = "192.168.4.1"
     private var subnetMask = "255.255.255.0"
     private var isAp = false
+    private var connectedDevices = mutableListOf<Socket>()
 
     fun startClient() {
         listener.onNetworkStatusChanged("Iniciant mode Client...")
         isAp = false
-        // En una implementació real, aquí buscaríem xarxes amb el SSID específic
         listener.onNetworkStatusChanged("Mode Client actiu")
         discoverPeers()
     }
@@ -75,9 +78,6 @@ class NetworkManager(
         isAp = true
         
         listener.onNetworkStatusChanged("Creant xarxa amb SSID: $ssid")
-        
-        // En una implementació real, aquí configuraríem la xarxa
-        // Aquesta és una implementació simplificada
         listener.onNetworkStatusChanged("Xarxa creada amb èxit: $ssid")
         isNetworkActive = true
         
@@ -108,6 +108,8 @@ class NetworkManager(
             clientThread?.interrupt()
             
             isNetworkActive = false
+            connectedDevices.forEach { it.close() }
+            connectedDevices.clear()
             listener.onNetworkStatusChanged("Xarxa aturada")
         } catch (e: Exception) {
             Log.e("NetworkManager", "Error al aturar", e)
@@ -118,7 +120,6 @@ class NetworkManager(
         listener.onNetworkStatusChanged("Cercant dispositius propers...")
         
         // En una implementació real, aquí buscaríem altres dispositius en la mateixa xarxa
-        // Aquesta és una implementació simplificada
         val mockPeers = listOf(
             DeviceInfo("Dispositiu 1", "192.168.4.2", "192.168.4.2"),
             DeviceInfo("Dispositiu 2", "192.168.4.3", "192.168.4.3")
@@ -134,8 +135,6 @@ class NetworkManager(
 
     fun connectToDevice(device: DeviceInfo) {
         listener.onNetworkStatusChanged("Connectant al dispositiu: ${device.deviceName}")
-        
-        // En una implementació real, aquí establiríem la connexió amb el dispositiu
         listener.onNetworkStatusChanged("Connectat a ${device.deviceName}")
         
         // Simulació de la connexió
@@ -158,6 +157,7 @@ class NetworkManager(
                     val socket = serverSocket?.accept()
                     if (socket != null) {
                         currentSocket = socket
+                        connectedDevices.add(socket)
                         startMessageReader(socket)
                     }
                 }
@@ -176,6 +176,7 @@ class NetworkManager(
                 val socket = Socket()
                 socket.connect(InetSocketAddress(host, 8988), 10000)
                 currentSocket = socket
+                connectedDevices.add(socket)
                 startMessageReader(socket)
                 listener.onNetworkStatusChanged("✅ Connectat a $host")
             } catch (e: Exception) {
@@ -192,18 +193,14 @@ class NetworkManager(
                 val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
-                    // Creem una còpia local no mutable de la línia
-                    val currentLine = line
-                    if (currentLine != null) {
-                        // Processa el missatge i reenvia a tots els clients si som AP
-                        Handler(Looper.getMainLooper()).post {
-                            listener.onMessageReceived(currentLine)
-                        }
-                        
-                        // Si som AP, reenvia el missatge a tots els altres clients
-                        if (isAp) {
-                            retransmitMessage(currentLine)
-                        }
+                    // Processa el missatge i reenvia a tots els clients si som AP
+                    Handler(Looper.getMainLooper()).post {
+                        listener.onMessageReceived(line!!)
+                    }
+                    
+                    // Si som AP, reenvia el missatge a tots els altres clients
+                    if (isAp && line != null) {
+                        retransmitMessage(line)
                     }
                 }
             } catch (e: Exception) {
@@ -214,14 +211,20 @@ class NetworkManager(
 
     private fun retransmitMessage(message: String) {
         // En una implementació real, aquí enviaríem el missatge a tots els clients connectats
-        // Aquesta és una implementació simplificada
-        Log.d("NetworkManager", "Retransmetent missatge: $message")
+        for (device in connectedDevices) {
+            try {
+                val output = device.getOutputStream()
+                PrintWriter(output, true).println(message)
+            } catch (e: Exception) {
+                Log.e("NetworkManager", "Error retransmetent missatge", e)
+            }
+        }
     }
 
     fun sendMessage(message: String) {
         try {
             currentSocket?.getOutputStream()?.let { output ->
-                PrintWriter(output, true).println(message)
+                PrintWriter(output, true).println(encryptMessage(message))
             }
         } catch (e: Exception) {
             Log.e("NetworkManager", "Error enviant missatge", e)
@@ -240,5 +243,28 @@ class NetworkManager(
 
     fun broadcastMessage(message: String) {
         sendMessage(message)
+    }
+
+    // Xifratge i desxifratge de missatges amb contrasenya "torre1"
+    private fun encryptMessage(message: String): String {
+        return try {
+            val key = "torre1".toByteArray()
+            val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+            cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"))
+            Base64.getEncoder().encodeToString(cipher.doFinal(message.toByteArray()))
+        } catch (e: Exception) {
+            message // Si hi ha error, enviem el missatge en text pla
+        }
+    }
+
+    fun decryptMessage(encryptedMessage: String): String {
+        return try {
+            val key = "torre1".toByteArray()
+            val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+            cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"))
+            String(cipher.doFinal(Base64.getDecoder().decode(encryptedMessage)))
+        } catch (e: Exception) {
+            encryptedMessage // Si hi ha error, retornem el text xifrat
+        }
     }
 }

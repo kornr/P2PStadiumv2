@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.util.Random
+import java.util.concurrent.CopyOnWriteArrayList
 
 class MainActivity : AppCompatActivity(), NetworkManager.Listener {
 
@@ -81,6 +82,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private var locationManager: LocationManager? = null
     private var networkDeployed = false
     private var deploymentTimer: CountDownTimer? = null
+    private var messageHistory = CopyOnWriteArrayList<String>()
 
     // Per actualitzar la llista periòdicament
     private var refreshHandler = Handler(Looper.getMainLooper())
@@ -581,6 +583,9 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private fun appendMessage(msg: String) {
         messageLog.append("\n$msg")
         messageLog.post { messageLog.scrollTo(0, messageLog.bottom) }
+        
+        // Afegim el missatge a l'historial
+        messageHistory.add(msg)
     }
 
     override fun onNetworkStatusChanged(status: String) {
@@ -667,30 +672,41 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     }
 
     override fun onMessageReceived(message: String) {
-        if (message.startsWith("CLIENT:")) {
-            val parts = message.split(":", limit = 3)
-            if (parts.size == 3) {
-                val name = parts[1]
-                val gps = parts[2]
-                devicePositions[parts[1]] = gps
-                clientData.add("$name → $gps")
-                clientListAdapter.notifyDataSetChanged()
-                addLogMessage("Missatge de client: $name → $gps")
+        try {
+            // Desxifrem el missatge
+            val decryptedMessage = networkManager.decryptMessage(message)
+            
+            if (decryptedMessage.startsWith("CLIENT:")) {
+                val parts = decryptedMessage.split(":", limit = 3)
+                if (parts.size == 3) {
+                    val name = parts[1]
+                    val gps = parts[2]
+                    devicePositions[parts[1]] = gps
+                    clientData.add("$name → $gps")
+                    clientListAdapter.notifyDataSetChanged()
+                    addLogMessage("Missatge de client: $name → $gps")
+                    appendMessage("Client: $name: $gps")
+                }
+            } else if (decryptedMessage.startsWith("POSITION:")) {
+                val parts = decryptedMessage.split(":", limit = 3)
+                if (parts.size == 3) {
+                    val name = parts[1]
+                    val position = parts[2]
+                    devicePositions[name] = position
+                    addLogMessage("Posició rebuda: $name → $position")
+                }
+            } else if (decryptedMessage.startsWith("DEVICE_INFO:")) {
+                val username = decryptedMessage.substringAfter("DEVICE_INFO:", "Desconegut")
+                addLogMessage("Informació del dispositiu: $username")
+            } else {
+                // Afegim el missatge desxifrat al xat
+                appendMessage(decryptedMessage)
+                addLogMessage("Missatge: $decryptedMessage")
             }
-        } else if (message.startsWith("POSITION:")) {
-            val parts = message.split(":", limit = 3)
-            if (parts.size == 3) {
-                val name = parts[1]
-                val position = parts[2]
-                devicePositions[name] = position
-                addLogMessage("Posició rebuda: $name → $position")
-            }
-        } else if (message.startsWith("DEVICE_INFO:")) {
-            val username = message.substringAfter("DEVICE_INFO:", "Desconegut")
-            addLogMessage("Informació del dispositiu: $username")
-        } else {
-            appendMessage("Peer: $message")
-            addLogMessage("Missatge del peer: $message")
+        } catch (e: Exception) {
+            // Si hi ha error en desxifrar, mostrem el missatge original
+            appendMessage(message)
+            addLogMessage("Missatge (error desxifrat): $message")
         }
     }
 
