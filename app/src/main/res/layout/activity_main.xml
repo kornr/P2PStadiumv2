@@ -97,6 +97,15 @@
             android:layout_marginTop="8dp"
             android:visibility="gone" />
 
+        <!-- Botó per forçar la cerca de dispositius -->
+        <Button
+            android:id="@+id/forceDiscoverButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Forçar cerca de dispositius"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -161,7 +170,6 @@
             android:layout_height="100dp"
             android:layout_marginTop="4dp" />
 
-        <!-- Nova consola de logs -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private lateinit var restartButton: Button
     private lateinit var refreshButton: Button
     private lateinit var logConsole: TextView
+    private lateinit var forceDiscoverButton: Button
 
     private var peers = mutableListOf<WifiP2pDevice>()
     private val peerAdapter: ArrayAdapter<WifiP2pDevice> by lazy {
@@ -89,6 +90,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         restartButton = findViewById(R.id.restartButton)
         refreshButton = findViewById(R.id.refreshButton)
         logConsole = findViewById(R.id.logConsole)
+        forceDiscoverButton = findViewById(R.id.forceDiscoverButton)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -171,6 +173,12 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 p2pManager.discoverPeers()
                 addLogMessage("Cerca de dispositius iniciada manualment")
             }
+        }
+
+        forceDiscoverButton.setOnClickListener {
+            statusText.text = "Forçant cerca de dispositius propers..."
+            p2pManager.forceDiscoverPeers()
+            addLogMessage("Cerca de dispositius forçada")
         }
 
         sendButton.setOnClickListener {
@@ -546,6 +554,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
     private fun updateRefreshButtonVisibility() {
         refreshButton.visibility = if (radioAp.isChecked) View.VISIBLE else View.GONE
+        forceDiscoverButton.visibility = if (radioAp.isChecked) View.VISIBLE else View.GONE
     }
 
     private fun addLogMessage(message: String) {

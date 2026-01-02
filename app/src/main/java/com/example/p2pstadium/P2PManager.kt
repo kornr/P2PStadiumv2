@@ -45,6 +45,7 @@ class P2PManager(
     private var clientThread: Thread? = null
     private var serverSocket: ServerSocket? = null
     private var currentSocket: Socket? = null
+    private var isDiscovering = false
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -65,7 +66,9 @@ class P2PManager(
                 }
                 WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {
                     Log.d("P2PManager", "Canvi en la llista de dispositius propers")
-                    manager.requestPeers(channel, this@P2PManager)
+                    if (isDiscovering) {
+                        manager.requestPeers(channel, this@P2PManager)
+                    }
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
                     Log.d("P2PManager", "Canvi en la connexió Wi-Fi Direct")
@@ -87,6 +90,7 @@ class P2PManager(
     }
 
     fun stop() {
+        isDiscovering = false
         try {
             currentSocket?.close()
             serverSocket?.close()
@@ -101,8 +105,28 @@ class P2PManager(
     }
 
     fun discoverPeers() {
+        isDiscovering = true
         Log.d("P2PManager", "Iniciant cerca de dispositius propers")
-        manager.discoverPeers(channel, null)
+        manager.discoverPeers(channel, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() {
+                Log.d("P2PManager", "Cerca de dispositius iniciada amb èxit")
+                listener.onP2PStatusChanged("🔍 Cerca de dispositius iniciada")
+                isDiscovering = true
+            }
+
+            override fun onFailure(reasonCode: Int) {
+                Log.e("P2PManager", "Error en iniciar cerca: $reasonCode")
+                listener.onP2PStatusChanged("❌ Error en iniciar cerca: $reasonCode")
+                isDiscovering = false
+            }
+        })
+    }
+
+    fun forceDiscoverPeers() {
+        stop()
+        start()
+        discoverPeers()
+        Log.d("P2PManager", "Forçant cerca de dispositius propers")
     }
 
     fun connectToDevice(device: WifiP2pDevice) {
@@ -110,12 +134,32 @@ class P2PManager(
         val config = WifiP2pConfig().apply {
             deviceAddress = device.deviceAddress
         }
-        manager.connect(channel, config, null)
+        manager.connect(channel, config, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() {
+                Log.d("P2PManager", "Connexió iniciada amb èxit")
+                listener.onP2PStatusChanged("🔗 Connexió iniciada")
+            }
+
+            override fun onFailure(reasonCode: Int) {
+                Log.e("P2PManager", "Error en connectar: $reasonCode")
+                listener.onP2PStatusChanged("❌ Error en connectar: $reasonCode")
+            }
+        })
     }
 
     fun createGroup() {
         Log.d("P2PManager", "Creant grup Wi-Fi Direct")
-        manager.createGroup(channel, null)
+        manager.createGroup(channel, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() {
+                Log.d("P2PManager", "Grup creat amb èxit")
+                listener.onP2PStatusChanged("✅ Grup creat amb èxit")
+            }
+
+            override fun onFailure(reasonCode: Int) {
+                Log.e("P2PManager", "Error en crear grup: $reasonCode")
+                listener.onP2PStatusChanged("❌ Error en crear grup: $reasonCode")
+            }
+        })
     }
 
     fun startServer() {
@@ -228,6 +272,11 @@ class P2PManager(
             Log.d("P2PManager", "Dispositiu descobert: ${device.deviceName} (${device.deviceAddress})")
             listener.onDeviceDiscovered(device, "Desconegut")
         }
+        
+        // Forçar actualització de la llista de dispositius
+        Handler(Looper.getMainLooper()).postDelayed({
+            manager.requestPeers(channel, this@P2PManager)
+        }, 500)
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
