@@ -322,28 +322,16 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
-    val count = group?.clientList?.let { 
-        it.javaClass.getDeclaredField("deviceList").apply { isAccessible = true }
-            .get(it) as? List<WifiP2pDevice>
-    }?.size ?: 0
+        val count = group?.clientList?.deviceList?.size ?: 0
+        val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
+        modeText.text = "$baseMode ($count clients)"
 
-    val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
-    modeText.text = "$baseMode ($count clients)"
-
-    clientData.clear()
-    group?.clientList?.let {
-        try {
-            val deviceList = it.javaClass.getDeclaredField("deviceList").apply { isAccessible = true }
-                .get(it) as? List<WifiP2pDevice>
-            deviceList?.forEach { device ->
-                clientData.add("${device.deviceName} (${device.deviceAddress})")
-            }
-        } catch (e: Exception) {
-            // Si hi ha un error, no fem res
+        clientData.clear()
+        group?.clientList?.deviceList?.forEach { device ->
+            clientData.add("${device.deviceName} (${device.deviceAddress})")
         }
+        clientListAdapter.notifyDataSetChanged()
     }
-    clientListAdapter.notifyDataSetChanged()
-}
 
     override fun onMessageReceived(message: String) {
         if (message.startsWith("CLIENT:")) {
