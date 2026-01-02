@@ -48,20 +48,27 @@ class P2PManager(
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
+            val action = intent.action
+            Log.d("P2PManager", "Rebut intent: $action")
+            
+            when (action) {
                 WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION -> {
                     val state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1)
                     if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
+                        Log.d("P2PManager", "Wi-Fi Direct estat: ACTIVAT")
                         listener.onP2PStatusChanged("✅ Wi-Fi Direct activat")
                         discoverPeers()
                     } else {
+                        Log.d("P2PManager", "Wi-Fi Direct estat: DESACTIVAT")
                         listener.onP2PStatusChanged("❌ Wi-Fi Direct desactivat")
                     }
                 }
                 WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION -> {
+                    Log.d("P2PManager", "Canvi en la llista de dispositius propers")
                     manager.requestPeers(channel, this@P2PManager)
                 }
                 WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION -> {
+                    Log.d("P2PManager", "Canvi en la connexió Wi-Fi Direct")
                     manager.requestConnectionInfo(channel, this@P2PManager)
                     manager.requestGroupInfo(channel, this@P2PManager)
                 }
@@ -75,6 +82,7 @@ class P2PManager(
             addAction(WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION)
             addAction(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION)
         })
+        Log.d("P2PManager", "P2PManager iniciat")
         listener.onP2PStatusChanged("Iniciant Wi-Fi Direct...")
     }
 
@@ -86,16 +94,19 @@ class P2PManager(
             clientThread?.interrupt()
             context.unregisterReceiver(broadcastReceiver)
             manager.removeGroup(channel, null)
+            Log.d("P2PManager", "P2PManager aturat")
         } catch (e: Exception) {
             Log.e("P2PManager", "Error al aturar", e)
         }
     }
 
     fun discoverPeers() {
+        Log.d("P2PManager", "Iniciant cerca de dispositius propers")
         manager.discoverPeers(channel, null)
     }
 
     fun connectToDevice(device: WifiP2pDevice) {
+        Log.d("P2PManager", "Connectant al dispositiu: ${device.deviceName} (${device.deviceAddress})")
         val config = WifiP2pConfig().apply {
             deviceAddress = device.deviceAddress
         }
@@ -103,17 +114,21 @@ class P2PManager(
     }
 
     fun createGroup() {
+        Log.d("P2PManager", "Creant grup Wi-Fi Direct")
         manager.createGroup(channel, null)
     }
 
     fun startServer() {
+        Log.d("P2PManager", "Iniciant servidor P2P")
         serverThread = Thread {
             try {
                 serverSocket = ServerSocket(8988)
+                Log.d("P2PManager", "Servidor P2P actiu al port 8988")
                 listener.onP2PStatusChanged("📡 Servidor P2P actiu al port 8988")
                 while (!Thread.currentThread().isInterrupted) {
                     val socket = serverSocket?.accept()
                     if (socket != null) {
+                        Log.d("P2PManager", "Nova connexió establerta")
                         currentSocket = socket
                         startMessageReader(socket)
                     }
@@ -128,10 +143,12 @@ class P2PManager(
     }
 
     fun connectAsClient(host: String) {
+        Log.d("P2PManager", "Connectant com a client a $host")
         clientThread = Thread {
             try {
                 val socket = Socket()
                 socket.connect(InetSocketAddress(host, 8988), 10000)
+                Log.d("P2PManager", "Connectat com a client")
                 currentSocket = socket
                 startMessageReader(socket)
                 listener.onP2PStatusChanged("📨 Connectat a $host")
@@ -149,6 +166,7 @@ class P2PManager(
                 val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                 var line: String?
                 while (reader.readLine().also { line = it } != null) {
+                    Log.d("P2PManager", "Missatge rebut: $line")
                     Handler(Looper.getMainLooper()).post {
                         listener.onMessageReceived(line!!)
                     }
@@ -162,6 +180,7 @@ class P2PManager(
     fun sendMessage(message: String) {
         try {
             currentSocket?.getOutputStream()?.let { output ->
+                Log.d("P2PManager", "Enviant missatge: $message")
                 PrintWriter(output, true).println(message)
             }
         } catch (e: Exception) {
@@ -172,19 +191,25 @@ class P2PManager(
     fun sendDeviceInfo() {
         val deviceInfo = "DEVICE_INFO:$username"
         sendMessage(deviceInfo)
+        Log.d("P2PManager", "Enviat informació del dispositiu: $username")
     }
 
     override fun onChannelDisconnected() {
+        Log.d("P2PManager", "Canal P2P desconnectat")
         listener.onP2PStatusChanged("⚠️ Canal P2P desconnectat")
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
+        Log.d("P2PManager", "Informació de connexió disponible")
         if (info.groupFormed) {
+            Log.d("P2PManager", "S'ha format un grup. És AP: ${info.isGroupOwner}")
             if (info.isGroupOwner) {
+                Log.d("P2PManager", "Sóc el propietari del grup (AP)")
                 listener.onP2PStatusChanged("🔥 AP actiu. IP: ${info.groupOwnerAddress}")
                 startServer()
                 sendDeviceInfo()
             } else {
+                Log.d("P2PManager", "Sóc un client connectat")
                 listener.onP2PStatusChanged("🔗 Client connectat")
                 connectAsClient(info.groupOwnerAddress.hostAddress)
             }
@@ -192,6 +217,7 @@ class P2PManager(
     }
 
     override fun onPeersAvailable(peers: WifiP2pDeviceList) {
+        Log.d("P2PManager", "Dispositius propers disponibles: ${peers.deviceList.size}")
         val deviceList = peers.deviceList.toList()
         
         // Notifica els dispositius disponibles
@@ -199,15 +225,18 @@ class P2PManager(
         
         // Per cada dispositiu, enviem una sol·licitud d'informació
         for (device in deviceList) {
+            Log.d("P2PManager", "Dispositiu descobert: ${device.deviceName} (${device.deviceAddress})")
             listener.onDeviceDiscovered(device, "Desconegut")
         }
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
+        Log.d("P2PManager", "Informació del grup disponible")
         listener.onGroupInfoAvailable(group)
         
         // Notifica els canvis en els clients connectats
         group?.clientList?.forEach { device ->
+            Log.d("P2PManager", "Client connectat: ${device.deviceName}")
             listener.onDeviceStatusChanged(device, "Connectat")
         }
     }

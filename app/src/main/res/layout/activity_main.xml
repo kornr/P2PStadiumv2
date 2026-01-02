@@ -161,6 +161,30 @@
             android:layout_height="100dp"
             android:layout_marginTop="4dp" />
 
+        <!-- Nova consola de logs -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Consola de logs:"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/logConsole"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:background="#F0F0F0"
+                android:textSize="12sp"
+                android:scrollbars="vertical"
+                android:isScrollContainer="true" />
+        </ScrollView>
+
         <Button
             android:id="@+id/restartButton"
             android:layout_width="match_parent"

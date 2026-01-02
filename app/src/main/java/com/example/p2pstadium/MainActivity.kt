@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -37,6 +38,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private lateinit var timerText: TextView
     private lateinit var restartButton: Button
     private lateinit var refreshButton: Button
+    private lateinit var logConsole: TextView
 
     private var peers = mutableListOf<WifiP2pDevice>()
     private val peerAdapter: ArrayAdapter<WifiP2pDevice> by lazy {
@@ -86,6 +88,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         timerText = findViewById(R.id.timerText)
         restartButton = findViewById(R.id.restartButton)
         refreshButton = findViewById(R.id.refreshButton)
+        logConsole = findViewById(R.id.logConsole)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -166,6 +169,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             if (radioAp.isChecked) {
                 statusText.text = "Cercant dispositius propers..."
                 p2pManager.discoverPeers()
+                addLogMessage("Cerca de dispositius iniciada manualment")
             }
         }
 
@@ -208,9 +212,11 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             .setPositiveButton("Acceptar") { _, _ ->
                 val password = passwordInput.text.toString()
                 if (password == "torre1") {
+                    addLogMessage("Reinici de xarxa iniciat per contrasenya")
                     restartP2PProcess()
                 } else {
                     Toast.makeText(this, "Contrasenya incorrecta", Toast.LENGTH_SHORT).show()
+                    addLogMessage("Intent de reinici amb contrasenya incorrecta")
                 }
             }
             .setNegativeButton("Cancel·lar", null)
@@ -386,6 +392,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         clientListAdapter.notifyDataSetChanged()
         modeText.text = "Mode: No definit"
         statusText.text = "Estat: Reiniciant..."
+        addLogMessage("Reinici de xarxa iniciat")
         initP2P()
     }
 
@@ -396,6 +403,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
     override fun onP2PStatusChanged(status: String) {
         statusText.text = status
+        addLogMessage("Estat P2P: $status")
     }
 
     override fun onConnectionInfoAvailable(info: WifiP2pInfo) {
@@ -403,17 +411,20 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             val isAp = info.isGroupOwner
             val baseMode = if (isAp) "✅ AP (Grup Owner)" else "🔵 Client"
             modeText.text = baseMode
+            addLogMessage("S'ha format un grup. És AP: $isAp")
 
             if (isAp) {
                 statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
                 p2pManager.startServer()
                 p2pManager.sendDeviceInfo()
+                addLogMessage("AP actiu. IP: ${info.groupOwnerAddress}")
             } else {
                 statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
                 val myGps = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
                 p2pManager.sendMessage("CLIENT:$username:$myGps")
+                addLogMessage("Connectat a AP. IP: ${info.groupOwnerAddress}")
             }
         }
         updateRefreshButtonVisibility()
@@ -423,12 +434,14 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         this.peers.clear()
         this.peers.addAll(peers)
         peerAdapter.notifyDataSetChanged()
+        addLogMessage("Dispositius propers actualitzats: ${peers.size} dispositius")
 
         // Si som un client i no estem connectats, cerca "torre1"
         if (radioClient.isChecked && !isConnectedToTorre1()) {
             val torre1Device = findTorre1Device()
             if (torre1Device != null) {
                 p2pManager.connectToDevice(torre1Device)
+                addLogMessage("Connectant a torre1: ${torre1Device.deviceName}")
             }
         }
         updateRefreshButtonVisibility()
@@ -438,11 +451,13 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         val count = group?.clientList?.size ?: 0
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
+        addLogMessage("Informació del grup actualitzada. Clients: $count")
 
         // Comprova si s'ha arribat al límit de clients
         if (count >= MAX_CLIENTS_PER_AP && radioAp.isChecked) {
             timerText.text = "Cercant nou AP per expansió..."
             startNewApSelection()
+            addLogMessage("S'ha arribat al límit de clients. Iniciant cerca de nou AP")
         }
 
         clientData.clear()
@@ -459,11 +474,13 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         deviceUsernames[device.deviceAddress] = username
         deviceStatus[device.deviceAddress] = "Disponible"
         updateDeviceList()
+        addLogMessage("Dispositiu descobert: ${device.deviceName} (nom d'usuari: $username)")
     }
 
     override fun onDeviceStatusChanged(device: WifiP2pDevice, status: String) {
         deviceStatus[device.deviceAddress] = status
         updateDeviceList()
+        addLogMessage("Estat del dispositiu actualitzat: ${device.deviceName} - $status")
     }
 
     private fun updateDeviceList() {
@@ -482,6 +499,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     private fun startNewApSelection() {
+        addLogMessage("Iniciant cerca de nou AP per expansió")
+        
         // En una implementació real, aquí s'enviaria un missatge als clients per obtenir les seves coordenades GPS
         // i es triaria el client amb les coordenades més allunyades per ser el nou AP
 
@@ -492,6 +511,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 modeText.text = "Mode: AP (expansió)"
                 currentApCount++
                 Toast.makeText(this, "Nou AP seleccionat! (Simulació)", Toast.LENGTH_SHORT).show()
+                addLogMessage("Nou AP seleccionat: mode canviat a AP")
             }
         }, 10000)
     }
@@ -504,14 +524,17 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 val gps = parts[2]
                 clientData.add("$name → $gps")
                 clientListAdapter.notifyDataSetChanged()
+                addLogMessage("Missatge de client: $name → $gps")
             }
         } else if (message.startsWith("DEVICE_INFO:")) {
-            val username = message.substringAfter("DEVICE_INFO:")
+            val username = message.substringAfter("DEVICE_INFO:", "Desconegut")
+            addLogMessage("Informació del dispositiu: $username")
             // En una implementació real, això s'hauria de fer amb la informació de la connexió
             // Per ara, simplement actualitzem el nom d'usuari del dispositiu
             // Això requereix més lògica per a associar el nom d'usuari amb el dispositiu
         } else {
             appendMessage("Peer: $message")
+            addLogMessage("Missatge del peer: $message")
         }
     }
 
@@ -523,6 +546,22 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
     private fun updateRefreshButtonVisibility() {
         refreshButton.visibility = if (radioAp.isChecked) View.VISIBLE else View.GONE
+    }
+
+    private fun addLogMessage(message: String) {
+        val timestamp = android.text.format.DateFormat.format("HH:mm:ss", System.currentTimeMillis())
+        val logEntry = "[$timestamp] $message"
+        
+        // Afegeix el missatge a la consola
+        logConsole.append("\n$logEntry")
+        
+        // Desplaça la vista al final
+        logConsole.post {
+            logConsole.scrollTo(0, logConsole.bottom)
+        }
+        
+        // Registra el missatge als logs de sistema també
+        Log.d("P2PStadium", message)
     }
 
     class SignatureView(context: Context) : View(context) {
