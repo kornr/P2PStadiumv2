@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private lateinit var saveUsernameButton: Button
     private lateinit var timerText: TextView
     private lateinit var restartButton: Button
+    private lateinit var refreshButton: Button
 
     private var peers = mutableListOf<WifiP2pDevice>()
     private val peerAdapter: ArrayAdapter<WifiP2pDevice> by lazy {
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private val MAX_CLIENTS_PER_AP = 4
     private var isTorre1 = false
     private val deviceUsernames = mutableMapOf<String, String>()
-    private var deviceStatus = mutableMapOf<String, String>()
+    private val deviceStatus = mutableMapOf<String, String>()
 
     // Per actualitzar la llista periòdicament
     private var refreshHandler = Handler(Looper.getMainLooper())
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         saveUsernameButton = findViewById(R.id.saveUsernameButton)
         timerText = findViewById(R.id.timerText)
         restartButton = findViewById(R.id.restartButton)
+        refreshButton = findViewById(R.id.refreshButton)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -129,6 +131,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                         false
                     }
                 }
+                updateRefreshButtonVisibility()
             }
         }
 
@@ -147,6 +150,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                         false
                     }
                 }
+                updateRefreshButtonVisibility()
             }
         }
 
@@ -156,6 +160,27 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
         restartButton.setOnClickListener {
             showPasswordDialog()
+        }
+
+        refreshButton.setOnClickListener {
+            if (radioAp.isChecked) {
+                statusText.text = "Cercant dispositius propers..."
+                p2pManager.discoverPeers()
+            }
+        }
+
+        sendButton.setOnClickListener {
+            val msg = messageInput.text.toString().trim()
+            if (msg.isNotEmpty()) {
+                val simulatedGPS = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
+                p2pManager.sendMessage("$username: $msg | $simulatedGPS")
+                appendMessage("Me: $msg | $simulatedGPS")
+                messageInput.text.clear()
+            }
+        }
+
+        peerList.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
+            p2pManager.connectToDevice(peers[position])
         }
     }
 
@@ -324,6 +349,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 p2pManager.createGroup()
                 modeText.text = "Mode: AP"
                 prefs.edit().putString("mode", "ap").apply()
+                updateRefreshButtonVisibility()
             }
         }
 
@@ -333,21 +359,8 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 p2pManager.start()
                 modeText.text = "Mode: Client"
                 prefs.edit().putString("mode", "client").apply()
+                updateRefreshButtonVisibility()
             }
-        }
-
-        sendButton.setOnClickListener {
-            val msg = messageInput.text.toString().trim()
-            if (msg.isNotEmpty()) {
-                val simulatedGPS = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
-                p2pManager.sendMessage("$username: $msg | $simulatedGPS")
-                appendMessage("Me: $msg | $simulatedGPS")
-                messageInput.text.clear()
-            }
-        }
-
-        peerList.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
-            p2pManager.connectToDevice(peers[position])
         }
     }
 
@@ -403,6 +416,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 p2pManager.sendMessage("CLIENT:$username:$myGps")
             }
         }
+        updateRefreshButtonVisibility()
     }
 
     override fun onPeerListUpdated(peers: List<WifiP2pDevice>) {
@@ -417,6 +431,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 p2pManager.connectToDevice(torre1Device)
             }
         }
+        updateRefreshButtonVisibility()
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
@@ -437,6 +452,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             clientData.add("$deviceName ($status)")
         }
         clientListAdapter.notifyDataSetChanged()
+        updateRefreshButtonVisibility()
     }
 
     override fun onDeviceDiscovered(device: WifiP2pDevice, username: String) {
@@ -503,6 +519,10 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         connectionTimer?.cancel()
         p2pManager.stop()
         super.onDestroy()
+    }
+
+    private fun updateRefreshButtonVisibility() {
+        refreshButton.visibility = if (radioAp.isChecked) View.VISIBLE else View.GONE
     }
 
     class SignatureView(context: Context) : View(context) {
