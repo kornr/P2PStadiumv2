@@ -301,7 +301,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             if (isAp) {
                 statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
-                p2pManager.startServer() // ✅ Utilitza el manager
+                p2pManager.startServer()
             } else {
                 statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
