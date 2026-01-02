@@ -137,6 +137,25 @@
             android:text="Configurar xarxa"
             android:layout_marginTop="8dp" />
 
+        <!-- Botó per mostrar la topologia -->
+        <Button
+            android:id="@+id/topologyButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mostrar topologia de xarxa"
+            android:layout_marginTop="8dp" />
+
+        <!-- Topologia de xarxa -->
+        <TextView
+            android:id="@+id/topologyView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:background="#F0F0F0"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp"
+            android:visibility="gone" />
+
         <!-- Fi de la configuració de xarxa -->
 
         <LinearLayout

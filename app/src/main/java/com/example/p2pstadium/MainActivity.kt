@@ -6,6 +6,9 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
@@ -41,6 +44,8 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private lateinit var ipAddress: EditText
     private lateinit var subnetMask: EditText
     private lateinit var ssid: EditText
+    private lateinit var topologyButton: Button
+    private lateinit var topologyView: TextView
 
     private var peers = mutableListOf<NetworkManager.DeviceInfo>()
     private val peerAdapter: ArrayAdapter<NetworkManager.DeviceInfo> by lazy {
@@ -57,10 +62,13 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private var apName = "AP Desconegut"
     private var connectionTimer: CountDownTimer? = null
     private var currentApCount = 0
-    private val MAX_CLIENTS_PER_AP = 4
+    private val MAX_CLIENTS_PER_AP = 2 // Canviat a 2 per a la teva sol·licitud
     private var isTorre1 = false
     private val deviceUsernames = mutableMapOf<String, String>()
     private val deviceStatus = mutableMapOf<String, String>()
+    private val devicePositions = mutableMapOf<String, String>()
+    private var currentLocation: Location? = null
+    private var locationManager: LocationManager? = null
 
     // Per actualitzar la llista periòdicament
     private var refreshHandler = Handler(Looper.getMainLooper())
@@ -96,6 +104,8 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         ipAddress = findViewById(R.id.ipAddress)
         subnetMask = findViewById(R.id.subnetMask)
         ssid = findViewById(R.id.ssid)
+        topologyButton = findViewById(R.id.topologyButton)
+        topologyView = findViewById(R.id.topologyView)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
@@ -103,6 +113,9 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         val prefs = getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE)
         acceptedTerms = prefs.getBoolean("terms_accepted", false)
         username = prefs.getString("username", "Anònim") ?: "Anònim"
+
+        // Inicialitza el sistema de localització
+        initLocationSystem()
 
         if (!acceptedTerms) {
             showTermsDialog()
@@ -192,18 +205,57 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
             configureNetwork()
         }
 
+        topologyButton.setOnClickListener {
+            updateTopologyView()
+        }
+
         sendButton.setOnClickListener {
             val msg = messageInput.text.toString().trim()
             if (msg.isNotEmpty()) {
-                val simulatedGPS = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
-                networkManager.sendMessage("$username: $msg | $simulatedGPS")
-                appendMessage("Me: $msg | $simulatedGPS")
+                val gps = getCurrentPosition()
+                val message = "$username: $msg | $gps"
+                networkManager.sendMessage(message)
+                appendMessage("Me: $message")
                 messageInput.text.clear()
             }
         }
 
         peerList.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
             networkManager.connectToDevice(peers[position])
+        }
+    }
+
+    private fun initLocationSystem() {
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val locationListener = object : LocationListener {
+            override fun onLocationChanged(location: Location) {
+                currentLocation = location
+                addLogMessage("Posició actualitzada: ${location.latitude}, ${location.longitude}")
+            }
+
+            override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+            override fun onProviderEnabled(provider: String) {}
+            override fun onProviderDisabled(provider: String) {}
+        }
+
+        try {
+            locationManager?.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                5000,
+                10f,
+                locationListener
+            )
+            addLogMessage("Sistema de localització iniciat")
+        } catch (e: SecurityException) {
+            addLogMessage("Error d'accés a la localització: ${e.message}")
+        }
+    }
+
+    private fun getCurrentPosition(): String {
+        return if (currentLocation != null) {
+            "GPS: ${currentLocation?.latitude}, ${currentLocation?.longitude}"
+        } else {
+            "GPS: 0.0, 0.0"
         }
     }
 
@@ -449,8 +501,8 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
             } else {
                 statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress
-                val myGps = "GPS: ${Random().nextInt(100)},${Random().nextInt(100)}"
-                networkManager.sendMessage("CLIENT:$username:$myGps")
+                val gps = getCurrentPosition()
+                networkManager.sendMessage("CLIENT:$username:$gps")
                 addLogMessage("Connectat a AP. IP: ${info.groupOwnerAddress}")
             }
         }
@@ -510,6 +562,26 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         addLogMessage("Estat del dispositiu actualitzat: ${device.deviceName} - $status")
     }
 
+    override fun onMessageReceived(message: String) {
+        if (message.startsWith("CLIENT:")) {
+            val parts = message.split(":", limit = 3)
+            if (parts.size == 3) {
+                val name = parts[1]
+                val gps = parts[2]
+                devicePositions[parts[1]] = gps
+                clientData.add("$name → $gps")
+                clientListAdapter.notifyDataSetChanged()
+                addLogMessage("Missatge de client: $name → $gps")
+            }
+        } else if (message.startsWith("DEVICE_INFO:")) {
+            val username = message.substringAfter("DEVICE_INFO:", "Desconegut")
+            addLogMessage("Informació del dispositiu: $username")
+        } else {
+            appendMessage("Peer: $message")
+            addLogMessage("Missatge del peer: $message")
+        }
+    }
+
     private fun updateDeviceList() {
         peerAdapter.notifyDataSetChanged()
         clientListAdapter.notifyDataSetChanged()
@@ -541,28 +613,6 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
                 addLogMessage("Nou AP seleccionat: mode canviat a AP")
             }
         }, 10000)
-    }
-
-    override fun onMessageReceived(message: String) {
-        if (message.startsWith("CLIENT:")) {
-            val parts = message.split(":", limit = 3)
-            if (parts.size == 3) {
-                val name = parts[1]
-                val gps = parts[2]
-                clientData.add("$name → $gps")
-                clientListAdapter.notifyDataSetChanged()
-                addLogMessage("Missatge de client: $name → $gps")
-            }
-        } else if (message.startsWith("DEVICE_INFO:")) {
-            val username = message.substringAfter("DEVICE_INFO:", "Desconegut")
-            addLogMessage("Informació del dispositiu: $username")
-            // En una implementació real, això s'hauria de fer amb la informació de la connexió
-            // Per ara, simplement actualitzem el nom d'usuari del dispositiu
-            // Això requereix més lògica per a associar el nom d'usuari amb el dispositiu
-        } else {
-            appendMessage("Peer: $message")
-            addLogMessage("Missatge del peer: $message")
-        }
     }
 
     override fun onDestroy() {
@@ -604,6 +654,41 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         networkManager.createNetwork(ip, mask, networkSsid)
         
         Toast.makeText(this, "Xarxa configurada", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun updateTopologyView() {
+        val topology = buildTopologyString()
+        topologyView.text = topology
+        topologyView.visibility = if (topologyView.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+    }
+
+    private fun buildTopologyString(): String {
+        val sb = StringBuilder()
+        sb.append("Topologia de la xarxa:\n\n")
+        
+        // Mostra l'AP principal
+        sb.append("🔥 AP Principal (tu)\n")
+        sb.append("  - IP: $apName\n")
+        sb.append("  - Posició: ${getCurrentPosition()}\n\n")
+        
+        // Mostra els clients connectats
+        sb.append("👥 Clients connectats:\n")
+        clientData.forEach { client ->
+            sb.append("  - $client\n")
+        }
+        
+        // Mostra la informació de la xarxa
+        sb.append("\n📊 Estat de la xarxa:\n")
+        sb.append("  - Mode: ${modeText.text}\n")
+        sb.append("  - Clients: ${clientData.size}\n")
+        sb.append("  - Límit per AP: $MAX_CLIENTS_PER_AP\n")
+        
+        // Si hi ha més de 2 clients, avisa que s'està iniciant la expansió
+        if (clientData.size > MAX_CLIENTS_PER_AP) {
+            sb.append("  ⚠️ S'està iniciant la creació d'un nou AP\n")
+        }
+        
+        return sb.toString()
     }
 
     class SignatureView(context: Context) : View(context) {
