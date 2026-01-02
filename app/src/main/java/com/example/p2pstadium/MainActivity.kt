@@ -322,12 +322,12 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
-        val count = group?.clientList?.deviceList?.size ?: 0
+        val count = group?.clientList?.size ?: 0
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
 
         clientData.clear()
-        group?.clientList?.deviceList?.forEach { device ->
+        group?.clientList?.forEach { device ->
             clientData.add("${device.deviceName} (${device.deviceAddress})")
         }
         clientListAdapter.notifyDataSetChanged()
