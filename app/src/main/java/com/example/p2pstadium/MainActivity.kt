@@ -373,6 +373,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                 statusText.text = "🔥 AP actiu. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
                 p2pManager.startServer()
+                p2pManager.sendDeviceInfo() // Envia informació del dispositiu
             } else {
                 statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress.hostAddress
@@ -457,9 +458,10 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             }
         } else if (message.startsWith("DEVICE_INFO:")) {
             val username = message.substringAfter("DEVICE_INFO:")
-            // En una implementació real, aquí hauríem de tenir una manera de saber quin dispositiu és
+            // En una implementació real, això s'hauria de fer amb la informació de la connexió
             // Per ara, simplement actualitzem el nom d'usuari del dispositiu
             // Això requereix més lògica per a associar el nom d'usuari amb el dispositiu
+            // En aquesta implementació simplificada, suposem que el primer dispositiu és "torre1"
         } else {
             appendMessage("Peer: $message")
         }

@@ -182,6 +182,7 @@ class P2PManager(
             if (info.isGroupOwner) {
                 listener.onP2PStatusChanged("🔥 AP actiu. IP: ${info.groupOwnerAddress}")
                 startServer()
+                sendDeviceInfo() // Envia informació del dispositiu
             } else {
                 listener.onP2PStatusChanged("🔗 Client connectat")
                 connectAsClient(info.groupOwnerAddress.hostAddress)
