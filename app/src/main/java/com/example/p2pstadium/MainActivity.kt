@@ -147,14 +147,17 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     private fun showPasswordDialog() {
+        // Correcció: Declarem la view abans de crear el dialog
+        val passwordInput = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        
         val passwordDialog = AlertDialog.Builder(this)
             .setTitle("Reiniciar xarxa")
             .setMessage("Introdueix la contrasenya:")
-            .setView(EditText(this).apply {
-                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-            })
+            .setView(passwordInput)
             .setPositiveButton("Acceptar") { _, _ ->
-                val password = (passwordDialog.view as EditText).text.toString()
+                val password = passwordInput.text.toString()
                 if (password == "torre1") {
                     restartP2PProcess()
                 } else {
@@ -163,6 +166,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             }
             .setNegativeButton("Cancel·lar", null)
             .create()
+        
         passwordDialog.show()
     }
 
