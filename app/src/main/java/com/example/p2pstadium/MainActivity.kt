@@ -322,18 +322,19 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     }
 
     override fun onGroupInfoAvailable(group: WifiP2pGroup?) {
-        val count = group?.clientList?.let { it.deviceList.size } ?: 0
+        // Obté la llista de clients
+        val deviceList = group?.clientList?.deviceList ?: emptyList()
+        val count = deviceList.size
         val baseMode = if (radioAp.isChecked) "✅ AP" else "🔵 Client"
         modeText.text = "$baseMode ($count clients)"
 
+        // Mostra els clients connectats
         clientData.clear()
-        group?.clientList?.let {
-            it.deviceList.forEach { device ->
-                clientData.add("${device.deviceName} (${device.deviceAddress})")
-            }
-        }
-        clientListAdapter.notifyDataSetChanged()
+    for (device in deviceList) {
+        clientData.add("${device.deviceName} (${device.deviceAddress})")
     }
+    clientListAdapter.notifyDataSetChanged()
+}
 
     override fun onMessageReceived(message: String) {
         if (message.startsWith("CLIENT:")) {
