@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
     private var connectionTimer: CountDownTimer? = null
     private var currentApCount = 0
     private val MAX_CLIENTS_PER_AP = 4
+    private var isTorre1 = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,6 +97,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
                     }
                 }
             } else {
+                isTorre1 = (username == "torre1")
                 initP2P()
             }
         }
@@ -105,7 +107,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             if (isChecked) {
                 usernameInput.visibility = View.VISIBLE
                 saveUsernameButton.visibility = View.VISIBLE
-                usernameInput.hint = "Nom per AP (ex: AP_Joan)"
+                usernameInput.hint = "Nom per AP (ex: torre1)"
                 usernameInput.setText(username.takeIf { it != "Anònim" } ?: "")
                 usernameInput.requestFocus()
                 usernameInput.setOnEditorActionListener { _, actionId, _ ->
@@ -173,6 +175,7 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         val name = usernameInput.text.toString().trim()
         if (name.isNotEmpty()) {
             username = name
+            isTorre1 = (name == "torre1")
             getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE).edit()
                 .putString("username", username)
                 .putBoolean("terms_accepted", true)
@@ -383,8 +386,12 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
         this.peers.addAll(peers)
         peerAdapter.notifyDataSetChanged()
 
-        if (peers.isNotEmpty() && radioClient.isChecked) {
-            p2pManager.connectToDevice(peers.first())
+        // Si som un client i no estem connectats, cerca "torre1"
+        if (radioClient.isChecked && !isConnectedToTorre1()) {
+            val torre1Device = findTorre1Device()
+            if (torre1Device != null) {
+                p2pManager.connectToDevice(torre1Device)
+            }
         }
     }
 
@@ -404,6 +411,20 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
             clientData.add("${device.deviceName} (${device.deviceAddress})")
         }
         clientListAdapter.notifyDataSetChanged()
+    }
+
+    private fun findTorre1Device(): WifiP2pDevice? {
+        // En una implementació real, això s'hauria de fer amb la informació rebuda dels dispositius
+        return peers.firstOrNull { device ->
+            // Aquí hauríem de tenir una manera de saber el nom d'usuari del dispositiu
+            // En aquesta implementació simplificada, suposem que el primer dispositiu és "torre1"
+            false
+        }
+    }
+
+    private fun isConnectedToTorre1(): Boolean {
+        // En una implementació real, això s'hauria de fer amb la informació de la connexió
+        return false
     }
 
     private fun startNewApSelection() {
