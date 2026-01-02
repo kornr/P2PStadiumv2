@@ -137,6 +137,14 @@
             android:text="Configurar xarxa"
             android:layout_marginTop="8dp" />
 
+        <!-- Botó per desplegar la xarxa -->
+        <Button
+            android:id="@+id/deployButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Iniciar desplegament de xarxa (1:2)"
+            android:layout_marginTop="8dp" />
+
         <!-- Botó per mostrar la topologia -->
         <Button
             android:id="@+id/topologyButton"

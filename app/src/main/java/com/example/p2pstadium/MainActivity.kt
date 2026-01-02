@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private lateinit var ssid: EditText
     private lateinit var topologyButton: Button
     private lateinit var topologyView: TextView
+    private lateinit var deployButton: Button
 
     private var peers = mutableListOf<NetworkManager.DeviceInfo>()
     private val peerAdapter: ArrayAdapter<NetworkManager.DeviceInfo> by lazy {
@@ -77,6 +78,8 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private val devicePositions = mutableMapOf<String, String>()
     private var currentLocation: Location? = null
     private var locationManager: LocationManager? = null
+    private var networkDeployed = false
+    private var deploymentTimer: CountDownTimer? = null
 
     // Per actualitzar la llista periòdicament
     private var refreshHandler = Handler(Looper.getMainLooper())
@@ -117,9 +120,15 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         ssid = findViewById(R.id.ssid)
         topologyButton = findViewById(R.id.topologyButton)
         topologyView = findViewById(R.id.topologyView)
+        deployButton = findViewById(R.id.deployButton)
 
         peerList.adapter = peerAdapter
         clientList.adapter = clientListAdapter
+
+        // Valors per defecte
+        ipAddress.setText("192.168.4.1")
+        subnetMask.setText("255.255.255.0")
+        ssid.setText("P2PStadium")
 
         val prefs = getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE)
         acceptedTerms = prefs.getBoolean("terms_accepted", false)
@@ -215,6 +224,10 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
 
         topologyButton.setOnClickListener {
             updateTopologyView()
+        }
+
+        deployButton.setOnClickListener {
+            startNetworkDeployment()
         }
 
         sendButton.setOnClickListener {
@@ -518,6 +531,49 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         initNetwork()
     }
 
+    private fun startNetworkDeployment() {
+        if (networkDeployed) {
+            addLogMessage("La xarxa ja està desplegada")
+            return
+        }
+
+        networkDeployed = true
+        addLogMessage("Iniciant desplegament de xarxa amb paritat 1:2")
+
+        // Forcem la cerca de dispositius
+        networkManager.forceDiscoverPeers()
+
+        // Iniciem un temporitzador per al desplegament
+        deploymentTimer = object : CountDownTimer(60000, 2000) {
+            override fun onTick(millisUntilFinished: Long) {
+                // Revisem la xarxa cada 2 segons
+                val currentClientCount = clientData.size
+                val currentApCount = this@MainActivity.currentApCount + 1 // Inclou l'AP principal
+
+                addLogMessage("Estat del desplegament: $currentClientCount clients, $currentApCount APs")
+
+                // Comprovem si podem crear un nou AP
+                if (currentClientCount >= MAX_CLIENTS_PER_AP * currentApCount) {
+                    // Cal crear un nou AP
+                    addLogMessage("S'ha arribat al límit de clients. Iniciant creació d'un nou AP")
+                    startNewApSelection()
+                }
+            }
+
+            override fun onFinish() {
+                addLogMessage("Temps d'exploració esgotat. Finalitzant desplegament.")
+                finalizeNetworkDeployment()
+            }
+        }.start()
+    }
+
+    private fun finalizeNetworkDeployment() {
+        networkDeployed = false
+        deploymentTimer = null
+        addLogMessage("Desplegament de xarxa finalitzat")
+        Toast.makeText(this, "Desplegament finalitzat", Toast.LENGTH_SHORT).show()
+    }
+
     private fun appendMessage(msg: String) {
         messageLog.append("\n$msg")
         messageLog.post { messageLog.scrollTo(0, messageLog.bottom) }
@@ -670,6 +726,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     override fun onDestroy() {
         connectionTimer?.cancel()
         networkManager.stop()
+        deploymentTimer?.cancel()
         super.onDestroy()
     }
 
@@ -734,6 +791,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         sb.append("  - Mode: ${modeText.text}\n")
         sb.append("  - Clients: ${clientData.size}\n")
         sb.append("  - Límit per AP: $MAX_CLIENTS_PER_AP\n")
+        sb.append("  - Nombre d'APs: ${currentApCount + 1}\n")
         
         // Si hi ha més de 2 clients, avisa que s'està iniciant la expansió
         if (clientData.size > MAX_CLIENTS_PER_AP) {
