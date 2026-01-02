@@ -643,6 +643,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     }
 
     private fun configureNetwork() {
+    if (::networkManager.isInitialized) {
         val ip = ipAddress.text.toString()
         val mask = subnetMask.text.toString()
         val networkSsid = ssid.text.toString()
@@ -654,7 +655,11 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         networkManager.createNetwork(ip, mask, networkSsid)
         
         Toast.makeText(this, "Xarxa configurada", Toast.LENGTH_SHORT).show()
+    } else {
+        addLogMessage("Error: networkManager no s'ha inicialitzat")
+        Toast.makeText(this, "Si us plau, inicia la xarxa primer", Toast.LENGTH_SHORT).show()
     }
+}
 
     private fun updateTopologyView() {
         val topology = buildTopologyString()
