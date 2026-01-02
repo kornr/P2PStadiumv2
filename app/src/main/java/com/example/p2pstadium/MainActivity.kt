@@ -1,7 +1,9 @@
 package com.example.p2pstadium
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -19,9 +21,15 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import java.util.Random
 
 class MainActivity : AppCompatActivity(), NetworkManager.Listener {
+
+    companion object {
+        private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+    }
 
     private lateinit var statusText: TextView
     private lateinit var modeText: TextView
@@ -62,7 +70,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     private var apName = "AP Desconegut"
     private var connectionTimer: CountDownTimer? = null
     private var currentApCount = 0
-    private val MAX_CLIENTS_PER_AP = 2 // Canviat a 2 per a la teva sol·licitud
+    private val MAX_CLIENTS_PER_AP = 2
     private var isTorre1 = false
     private val deviceUsernames = mutableMapOf<String, String>()
     private val deviceStatus = mutableMapOf<String, String>()
@@ -82,6 +90,9 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Sol·licita permís de localització
+        checkLocationPermission()
 
         // Inicialitzem totes les vistes
         radioAp = findViewById(R.id.radioAp)
@@ -113,9 +124,6 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         val prefs = getSharedPreferences("P2P_PREFS", Context.MODE_PRIVATE)
         acceptedTerms = prefs.getBoolean("terms_accepted", false)
         username = prefs.getString("username", "Anònim") ?: "Anònim"
-
-        // Inicialitza el sistema de localització
-        initLocationSystem()
 
         if (!acceptedTerms) {
             showTermsDialog()
@@ -215,6 +223,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
                 val gps = getCurrentPosition()
                 val message = "$username: $msg | $gps"
                 networkManager.sendMessage(message)
+                broadcastMessageToAll("$username: $msg | $gps")
                 appendMessage("Me: $message")
                 messageInput.text.clear()
             }
@@ -225,12 +234,35 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         }
     }
 
+    private fun checkLocationPermission(): Boolean {
+        return if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), LOCATION_PERMISSION_REQUEST_CODE)
+            false
+        } else {
+            true
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                addLogMessage("Permís de localització concedit")
+                initLocationSystem()
+            } else {
+                addLogMessage("Permís de localització denegat")
+                Toast.makeText(this, "El permís de localització és necessari", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun initLocationSystem() {
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val locationListener = object : LocationListener {
             override fun onLocationChanged(location: Location) {
                 currentLocation = location
                 addLogMessage("Posició actualitzada: ${location.latitude}, ${location.longitude}")
+                sendPositionToAll()
             }
 
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -257,6 +289,17 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         } else {
             "GPS: 0.0, 0.0"
         }
+    }
+
+    private fun sendPositionToAll() {
+        val position = getCurrentPosition()
+        networkManager.sendPosition(position)
+        addLogMessage("Posició enviada: $position")
+    }
+
+    private fun broadcastMessageToAll(message: String) {
+        networkManager.broadcastMessage(message)
+        addLogMessage("Missatge difós: $message")
     }
 
     override fun onResume() {
@@ -498,6 +541,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
                 networkManager.startServer()
                 networkManager.sendDeviceInfo()
                 addLogMessage("AP actiu. IP: ${info.groupOwnerAddress}")
+                sendPositionToAll() // Enviar la posició de l'AP
             } else {
                 statusText.text = "🔗 Connectat a AP. IP: ${info.groupOwnerAddress}"
                 apName = info.groupOwnerAddress
@@ -573,6 +617,14 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
                 clientListAdapter.notifyDataSetChanged()
                 addLogMessage("Missatge de client: $name → $gps")
             }
+        } else if (message.startsWith("POSITION:")) {
+            val parts = message.split(":", limit = 3)
+            if (parts.size == 3) {
+                val name = parts[1]
+                val position = parts[2]
+                devicePositions[name] = position
+                addLogMessage("Posició rebuda: $name → $position")
+            }
         } else if (message.startsWith("DEVICE_INFO:")) {
             val username = message.substringAfter("DEVICE_INFO:", "Desconegut")
             addLogMessage("Informació del dispositiu: $username")
@@ -643,7 +695,6 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
     }
 
     private fun configureNetwork() {
-    if (::networkManager.isInitialized) {
         val ip = ipAddress.text.toString()
         val mask = subnetMask.text.toString()
         val networkSsid = ssid.text.toString()
@@ -655,11 +706,7 @@ class MainActivity : AppCompatActivity(), NetworkManager.Listener {
         networkManager.createNetwork(ip, mask, networkSsid)
         
         Toast.makeText(this, "Xarxa configurada", Toast.LENGTH_SHORT).show()
-    } else {
-        addLogMessage("Error: networkManager no s'ha inicialitzat")
-        Toast.makeText(this, "Si us plau, inicia la xarxa primer", Toast.LENGTH_SHORT).show()
     }
-}
 
     private fun updateTopologyView() {
         val topology = buildTopologyString()
