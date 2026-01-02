@@ -328,11 +328,11 @@ class MainActivity : AppCompatActivity(), P2PManager.Listener {
 
         clientData.clear()
         group?.clientList?.let {
-        it.deviceList.forEach { device ->
-            clientData.add("${device.deviceName} (${device.deviceAddress})")
+            it.deviceList.forEach { device ->
+                clientData.add("${device.deviceName} (${device.deviceAddress})")
+            }
         }
-        }   
-            clientListAdapter.notifyDataSetChanged()
+        clientListAdapter.notifyDataSetChanged()
     }
 
     override fun onMessageReceived(message: String) {
